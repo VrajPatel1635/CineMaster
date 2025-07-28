@@ -25,13 +25,33 @@ export default function AuthPage() {
     try {
       if (isSignUp) {
         // Use backend's register endpoint
-        await axios.post("http://localhost:5000/api/register", { email, password });
+        const response = await axios.post("http://localhost:5000/api/register", {
+          email,
+          password,
+        });
+        const userId = response.data.userId;
+        // Store user data in database
+        await axios.post("http://localhost:5000/api/users", {
+          userId,
+          email,
+          password,
+        });
       } else {
         // Use backend's login endpoint
-        await axios.post("http://localhost:5000/api/login", { email, password });
+        const response = await axios.post("http://localhost:5000/api/login", {
+          email,
+          password,
+        });
+        const userId = response.data.userId;
+        // Store user data in database
+        await axios.post("http://localhost:5000/api/users", {
+          userId,
+          email,
+          password,
+        });
       }
 
-      // ✅ After login/signup, check for redirect
+      // After login/signup, check for redirect
       const redirect = searchParams.get("redirect");
       if (redirect === "watchlist") {
         const movieId = searchParams.get("movieId");
@@ -48,11 +68,11 @@ export default function AuthPage() {
       }
 
       router.push("/watchlist");
-    } catch (error) {
-      console.error("Auth error:", error);
-      alert("Authentication failed");
     }
-  };
+    catch (error) {
+      console.error(error);
+    }
+};
 
   const onChangeConfirmPass = (e) => {
     if (e.target.value === password || e.target.value.length < 6) {

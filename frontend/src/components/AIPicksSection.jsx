@@ -12,8 +12,6 @@ import TrailerPlayer from '@/components/TrailerPlayer';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-
 export default function AIPicksSection() {
     const [hollywood, setHollywood] = useState([]);
     const [bollywood, setBollywood] = useState([]);
@@ -57,7 +55,7 @@ export default function AIPicksSection() {
         setError(null);
         try {
             const queryString = new URLSearchParams(params).toString();
-            const { data } = await axios.get(`http://localhost:5000/api/trending-picks?${queryString}`);
+            const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/trending-picks?${queryString}`);
             setState(data);
         } catch (error) {
             console.error(`Error fetching trending movies from backend:`, error);
