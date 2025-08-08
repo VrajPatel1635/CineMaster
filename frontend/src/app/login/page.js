@@ -1,78 +1,109 @@
+// frontend/src/app/login/page.js
 'use client';
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MdEmail, MdLock } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
-import { Wrapper } from "./Styles"; // Import the styled component
+import { Wrapper } from "./Styles";
 import axios from "axios";
+import { useAuth } from '../../context/AuthContext';
 
 export default function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [formSubmitting, setFormSubmitting] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { login, signup, isAuthenticated, authLoading } = useAuth();
 
-  const showSignIn = () => setIsSignUp(false);
-  const showSignUp = () => setIsSignUp(true);
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      console.log("AuthPage: Authenticated, redirecting to /watchlist.");
+      const redirect = searchParams.get("redirect");
+      if (redirect === "watchlist") {
+        router.replace("/watchlist");
+      } else {
+        router.replace("/");
+      }
+    }
+  }, [isAuthenticated, authLoading, router, searchParams]);
+
+
+  const showSignIn = () => {
+    setIsSignUp(false);
+    setMessage("");
+  };
+  const showSignUp = () => {
+    setIsSignUp(true);
+    setMessage("");
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    setMessage("");
+    setFormSubmitting(true);
 
-    const email = e.target.querySelector('input[type="email"]').value;
-    const password = e.target.querySelector('input[type="password"]').value;
+    const formData = new FormData(e.target);
+    const email = formData.get("email");
+    const password = formData.get("password");
+    const confirmPassword = formData.get("confirmPassword");
+
+    if (isSignUp && password !== confirmPassword) {
+      setMessage("Passwords do not match");
+      setFormSubmitting(false);
+      return;
+    }
 
     try {
+      let authResult;
+
       if (isSignUp) {
-        // Use backend's register endpoint
-        const response = await axios.post("http://localhost:5000/api/register", {
-          email,
-          password,
-        });
-        const userId = response.data.userId;
-        // Store user data in database
-        await axios.post("http://localhost:5000/api/users", {
-          userId,
-          email,
-          password,
-        });
+        authResult = await signup(email, password);
       } else {
-        // Use backend's login endpoint
-        const response = await axios.post("http://localhost:5000/api/login", {
-          email,
-          password,
-        });
-        const userId = response.data.userId;
-        // Store user data in database
-        await axios.post("http://localhost:5000/api/users", {
-          userId,
-          email,
-          password,
-        });
+        authResult = await login(email, password);
       }
 
-      // After login/signup, check for redirect
-      const redirect = searchParams.get("redirect");
-      if (redirect === "watchlist") {
-        const movieId = searchParams.get("movieId");
-        const mediaType = searchParams.get("mediaType");
-        const title = searchParams.get("title");
-        const poster = searchParams.get("poster");
+      if (authResult.success) {
+        console.log("AuthPage: Login/Signup successful. AuthContext state should be updated.");
 
-        await axios.post("/api/watchlist", {
-          movieId,
-          mediaType,
-          title,
-          poster,
-        });
+        const redirect = searchParams.get("redirect");
+        if (redirect === "watchlist") {
+          const movieId = searchParams.get("movieId");
+          const mediaType = searchParams.get("mediaType");
+          const title = searchParams.get("title");
+          const poster = searchParams.get("poster");
+
+          if (movieId && mediaType && title && poster) {
+            try {
+              await axios.post("/api/watchlist", {
+                movieId,
+                mediaType,
+                title,
+                poster,
+              });
+              console.log("AuthPage: Movie added to watchlist.");
+            } catch (watchlistError) {
+              console.error("Error adding to watchlist:", watchlistError.response?.data || watchlistError.message);
+              setMessage("Successfully logged in/signed up, but failed to add movie to watchlist.");
+            }
+          } else {
+            console.warn("AuthPage: Missing parameters for watchlist redirect, skipping add to watchlist.");
+          }
+        }
+      } else {
+        setMessage(authResult.message || "Authentication failed.");
       }
+    } catch (error) {
+      console.error("Submission error:", error.response?.data || error.message);
+      setMessage(error.response?.data?.message || "An unexpected error occurred.");
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
 
-      router.push("/watchlist");
-    }
-    catch (error) {
-      console.error(error);
-    }
-};
 
   const onChangeConfirmPass = (e) => {
     if (e.target.value === password || e.target.value.length < 6) {
@@ -127,27 +158,53 @@ export default function AuthPage() {
     },
   };
 
-  // ✅ Zoom-in animation for the entire page
   const pageZoomVariants = {
-    hidden: { scale: 0.9, opacity: 0 },
+    hidden: { scale: 0, opacity: 0 },
     visible: {
       scale: 1,
       opacity: 1,
       transition: {
-        duration: 0.6,
+        duration: 1.5,
         ease: "easeOut",
       },
     },
   };
 
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background-primary text-text-primary">
+        <p>Loading authentication status...</p>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background-primary text-text-primary">
+        <p>Redirecting...</p>
+      </div>
+    );
+  }
+
   return (
-    <Wrapper>
+    <Wrapper className="px-4 md:px-8 lg:px-16 xl:px-24 py-8">
       <motion.div
-        className={`container ${isSignUp ? "signup-active" : ""}`}
+        className={`container ${isSignUp ? "signup-active" : ""} w-full max-w-[1000px] mx-auto`}
         initial="hidden"
         animate="visible"
         variants={pageZoomVariants}
       >
+        {message && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-4 left-1/2 -translate-x-1/2 bg-red-500 text-white p-3 rounded-md shadow-lg z-50 w-[90%] max-w-md"
+          >
+            {message}
+          </motion.div>
+        )}
+
         {/* Sign Up Form Container */}
         <AnimatePresence>
           {isSignUp && (
@@ -159,23 +216,24 @@ export default function AuthPage() {
               exit="exit"
               variants={itemVariants}
             >
-              <motion.form onSubmit={onSubmit} variants={formContainerVariants}>
+              <motion.form onSubmit={onSubmit} variants={formContainerVariants} className="w-full">
                 <motion.h1 variants={itemVariants}>Create Account</motion.h1>
 
-                <motion.div variants={itemVariants} style={{ width: '100%' }}>
+                <motion.div variants={itemVariants} className="w-full">
                   <label htmlFor="signup-email">
                     <MdEmail />Email
                   </label>
-                  <input id="signup-email" type="email" placeholder="pigeon@nestcoop.com" required />
+                  <input id="signup-email" name="email" type="email" placeholder="pigeon@nestcoop.com" required />
                 </motion.div>
 
-                <motion.div variants={itemVariants} style={{ width: '100%' }}>
+                <motion.div variants={itemVariants} className="w-full">
                   <label htmlFor="signup-password">
                     <MdLock />Password
                   </label>
                   <input
                     id="signup-password"
                     type="password"
+                    name="password"
                     minLength={6}
                     placeholder="******"
                     required
@@ -184,13 +242,14 @@ export default function AuthPage() {
                   />
                 </motion.div>
 
-                <motion.div variants={itemVariants} style={{ width: '100%' }}>
+                <motion.div variants={itemVariants} className="w-full">
                   <label htmlFor="signup-confirmPassword">
                     <MdLock />Confirm Password
                   </label>
                   <input
                     id="signup-confirmPassword"
                     type="password"
+                    name="confirmPassword"
                     minLength={6}
                     placeholder="******"
                     required
@@ -203,8 +262,9 @@ export default function AuthPage() {
                   variants={itemVariants}
                   whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(55, 184, 235, 0.5)" }}
                   whileTap={{ scale: 0.95 }}
+                  disabled={formSubmitting}
                 >
-                  Create Account
+                  {formSubmitting ? "Creating..." : "Create Account"}
                 </motion.button>
                 <motion.span
                   className="link"
@@ -230,21 +290,21 @@ export default function AuthPage() {
               exit="exit"
               variants={itemVariants}
             >
-              <motion.form onSubmit={onSubmit} variants={formContainerVariants}>
+              <motion.form onSubmit={onSubmit} variants={formContainerVariants} className="w-full">
                 <motion.h1 variants={itemVariants}>Sign in</motion.h1>
 
-                <motion.div variants={itemVariants} style={{ width: '100%' }}>
+                <motion.div variants={itemVariants} className="w-full">
                   <label htmlFor="signin-email">
                     <MdEmail />Email
                   </label>
-                  <input id="signin-email" type="email" placeholder="pigeon@nestcoop.com" required />
+                  <input id="signin-email" name="email" type="email" placeholder="pigeon@nestcoop.com" required />
                 </motion.div>
 
-                <motion.div variants={itemVariants} style={{ width: '100%' }}>
+                <motion.div variants={itemVariants} className="w-full">
                   <label htmlFor="signin-password">
                     <MdLock />Password
                   </label>
-                  <input id="signin-password" type="password" minLength={6} placeholder="******" required />
+                  <input id="signin-password" name="password" type="password" minLength={6} placeholder="******" required />
                 </motion.div>
 
                 <motion.button
@@ -252,8 +312,9 @@ export default function AuthPage() {
                   variants={itemVariants}
                   whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(55, 184, 235, 0.5)" }}
                   whileTap={{ scale: 0.95 }}
+                  disabled={formSubmitting}
                 >
-                  Login
+                  {formSubmitting ? "Logging In..." : "Login"}
                 </motion.button>
                 <motion.span
                   className="link"

@@ -1,272 +1,386 @@
 // src/app/movie/[id]/page.js
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { notFound, useSearchParams, useParams } from 'next/navigation';
+import axios from 'axios';
 import Image from 'next/image';
-import TrailerPlayer from '@/components/TrailerPlayer';
 import { motion } from 'framer-motion';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { FaRegHeart, FaHeart } from 'react-icons/fa';
+import TrailerPlayer from '@/components/TrailerPlayer';
+import WatchlistSuccessPopup from '@/components/WatchlistSuccessPopup';
+import { useAuth } from '@/context/AuthContext';
 
-gsap.registerPlugin(ScrollTrigger);
+const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
 
-export default function MovieDetailsPage() {
-  const router = useRouter();
-  const { user } = useAuth();
-  const [popupMsg, setPopupMsg] = useState('');
-  const [adding, setAdding] = useState(false);
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [movieDetails, setMovieDetails] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isTrailerModalOpen, setIsTrailerModalOpen] = useState(false);
+// Define variants for the staggered genre animation
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1
+        }
+    }
+};
 
-  const contentRef = useRef(null);
+const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+};
 
-  useEffect(() => {
-    const fetchDetails = async () => {
-      const pathParts = pathname.split('/');
-      const id = pathParts[2];
-      const mediaType = searchParams.get('media_type');
+export default function MovieDetails() {
+    const params = useParams();
+    const { id } = params;
+    const searchParams = useSearchParams();
+    const mediaType = searchParams.get('media_type') || 'movie';
 
-      if (!id || !mediaType) {
-        setError("Missing movie ID or media type in URL.");
-        setLoading(false);
-        return;
-      }
+    const { user, isAuthenticated } = useAuth();
 
-      setLoading(true);
-      setError(null);
+    const [movieDetails, setMovieDetails] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [isTrailerModalOpen, setIsTrailerModalOpen] = useState(false);
+    const [showWatchlistPopup, setShowWatchlistPopup] = useState(false);
+    const [watchlistPopupMovie, setWatchlistPopupMovie] = useState(null);
+    const [isAdding, setIsAdding] = useState(false);
+    const [isAdded, setIsAdded] = useState(false);
+    const [watchlistError, setWatchlistError] = useState(null);
 
-      try {
-        const res = await fetch(`http://localhost:5000/api/details/${mediaType}/${id}`);
+    // Fetch movie details and check watchlist status
+    useEffect(() => {
+        if (!id) return;
 
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({ message: 'Unknown error' }));
-          throw new Error(`HTTP error! Status: ${res.status}, Message: ${errorData.message || res.statusText}`);
+        const fetchDetailsAndStatus = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const detailsResponse = await axios.get(`${serverUrl}/api/details/${mediaType}/${id}`);
+                setMovieDetails(detailsResponse.data);
+
+                if (isAuthenticated && user) {
+                    const statusResponse = await axios.get(`${serverUrl}/api/watchlist/status/${user._id}/${detailsResponse.data.id}`);
+                    setIsAdded(statusResponse.data.inWatchlist);
+                }
+            } catch (err) {
+                console.error('Error fetching movie details or watchlist status:', err);
+                if (err.response && err.response.status === 404) {
+                    notFound();
+                } else {
+                    setError('Failed to fetch movie details. Please try again.');
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDetailsAndStatus();
+    }, [id, mediaType, isAuthenticated, user]);
+
+    // Save to history effect is fine as is
+    useEffect(() => {
+        if (isAuthenticated && movieDetails && user) {
+            const saveToHistory = async () => {
+                try {
+                    const genreIds = movieDetails.genres ? movieDetails.genres.map(g => g.id) : [];
+                    await axios.post(`${serverUrl}/api/save-history`, {
+                        userId: user._id,
+                        movieId: movieDetails.id,
+                        genreIds,
+                        title: movieDetails.title || movieDetails.name,
+                    });
+                    console.log(`Movie ID ${movieDetails.id} saved to history for user ${user._id}.`);
+                } catch (err) {
+                    console.error('Failed to save movie to history:', err);
+                }
+            };
+            saveToHistory();
+        }
+    }, [isAuthenticated, movieDetails, user]);
+
+    // Function to handle adding a movie to the watchlist
+    const handleAddToWatchlist = async () => {
+        if (!isAuthenticated || isAdding) {
+            if (!isAuthenticated) console.log("User not authenticated, please login to add to watchlist.");
+            return;
         }
 
-        const data = await res.json();
-        setMovieDetails(data);
-      } catch (err) {
-        console.error("Failed to fetch movie details:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+        setIsAdding(true);
+        setWatchlistError(null);
+
+        const moviePayload = {
+            userId: user._id,
+            movieId: movieDetails?.id,
+            title: movieDetails?.title || movieDetails?.name,
+            genreIds: movieDetails?.genres?.map(g => g.id) || []
+        };
+
+        // --- ENHANCED DEBUGGING: INSPECT THE PAYLOAD AND RESPONSE ---
+        console.groupCollapsed(`Attempting to add movie to watchlist...`);
+        console.log("Movie ID:", moviePayload.movieId);
+        console.log("Title:", moviePayload.title);
+        console.log("Genre IDs:", moviePayload.genreIds)
+        console.groupEnd();
+
+        try {
+            const res = await axios.post(`${serverUrl}/api/watchlist/add`, moviePayload);
+
+            // Log the successful response from the server
+            console.log("SUCCESS: Watchlist API responded with:", res.data);
+
+            if (res.status === 200) {
+                setIsAdded(true);
+                setWatchlistPopupMovie(movieDetails);
+                setShowWatchlistPopup(true);
+                setTimeout(() => setShowWatchlistPopup(false), 5000);
+            }
+        } catch (error) {
+            // Log the full error object for detailed inspection
+            console.error("ERROR: Failed to add movie to watchlist. Full error object:", error);
+
+            if (error.response && error.response.status === 409) {
+                setWatchlistError('This movie is already in your watchlist.');
+                setIsAdded(true);
+            } else {
+                setWatchlistError('Failed to add movie to watchlist. Please try again.');
+            }
+        } finally {
+            setIsAdding(false);
+        }
     };
 
-    fetchDetails();
-  }, [pathname, searchParams]);
-
-  useEffect(() => {
-    if (contentRef.current) {
-      gsap.fromTo(
-        contentRef.current,
-        { opacity: 0, y: 40 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 1,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: contentRef.current,
-            start: 'top 85%',
-          },
+    // Function to handle removing a movie from the watchlist
+    const handleRemoveFromWatchlist = async () => {
+        if (!isAuthenticated || isAdding) {
+            if (!isAuthenticated) console.log("User not authenticated, please login to remove from watchlist.");
+            return;
         }
-      );
+        setIsAdding(true);
+        setWatchlistError(null);
+
+        try {
+            const res = await axios.post(`${serverUrl}/api/watchlist/remove`, {
+                userId: user._id,
+                movieId: movieDetails.id,
+            });
+            if (res.status === 200) {
+                console.log(res.data.message);
+                setIsAdded(false);
+            }
+        } catch (error) {
+            console.error("Error removing movie from watchlist:", error);
+            setWatchlistError('Failed to remove movie from watchlist.');
+        } finally {
+            setIsAdding(false);
+        }
+    };
+
+    if (loading) {
+        return <div className="h-screen flex items-center justify-center text-gray-300">Loading details...</div>;
     }
-  }, [movieDetails]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-900 text-white text-2xl pt-16">
-        Loading details...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-900 text-red-500 text-xl pt-16">
-        Error: {error}
-      </div>
-    );
-  }
-
-  if (!movieDetails) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-900 text-zinc-400 text-xl pt-16">
-        No details found.
-      </div>
-    );
-  }
-
-  const displayTitle = movieDetails.title || movieDetails.name;
-  const releaseDate = movieDetails.release_date || movieDetails.first_air_date;
-  const year = releaseDate ? new Date(releaseDate).getFullYear() : 'N/A';
-  const runtime = movieDetails.runtime || (movieDetails.episode_run_time && movieDetails.episode_run_time[0]) || 'N/A';
-  const genres = movieDetails.genres?.map(genre => genre.name).join(', ') || 'N/A';
-
-  const backdropPath = movieDetails.backdrop_path
-    ? `https://image.tmdb.org/t/p/original${movieDetails.backdrop_path}`
-    : null;
-  const posterPath = movieDetails.poster_path
-    ? `https://image.tmdb.org/t/p/w500${movieDetails.poster_path}`
-    : '/images/placeholder-poster.png';
-
-  const youtubeTrailerKey = movieDetails.trailerKey;
-
-  // Add to Watchlist handler
-  const handleAddToWatchlist = async () => {
-    if (!user) {
-      // Store intended movie in localStorage and redirect to login
-      localStorage.setItem('pendingWatchlistMovie', JSON.stringify({
-        id: movieDetails.id,
-        media_type: searchParams.get('media_type'),
-        movie: movieDetails
-      }));
-      router.push('/login');
-      return;
+    if (error) {
+        return <div className="h-screen flex items-center justify-center text-red-500">{error}</div>;
     }
-    setAdding(true);
-    try {
-      const res = await fetch('http://localhost:5000/api/watchlist', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          movieId: movieDetails.id,
-          mediaType: searchParams.get('media_type'),
-          movie: movieDetails,
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to add to watchlist');
-      setPopupMsg(`${movieDetails.title || movieDetails.name} added to watchlist!`);
-      setTimeout(() => setPopupMsg(''), 2000);
-    } catch (err) {
-      setPopupMsg('Error adding to watchlist');
-      setTimeout(() => setPopupMsg(''), 2000);
-    } finally {
-      setAdding(false);
+
+    if (!movieDetails) {
+        return <div className="h-screen flex items-center justify-center text-gray-300">Movie not found.</div>;
     }
-  };
 
-  return (
-    <div className="min-h-screen bg-zinc-900 text-white pt-16">
-      {backdropPath && (
-        <div className="relative w-full h-[800px] bg-black z-0">
-          <Image
-            src={backdropPath}
-            alt={`${displayTitle} backdrop`}
-            layout="fill"
-            objectFit="cover"
-            priority
-            className="opacity-40 object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent"></div>
-        </div>
-      )}
+    const backdropUrl = movieDetails.backdrop_path ? `https://image.tmdb.org/t/p/original${movieDetails.backdrop_path}` : null;
+    const posterUrl = movieDetails.poster_path ? `https://image.tmdb.org/t/p/w500${movieDetails.poster_path}` : '/images/placeholder-poster.png';
 
-      <motion.div
-        ref={contentRef}
-        className={`relative ${backdropPath ? '-mt-20' : 'pt-8'} z-10 max-w-5xl mx-auto px-4 pb-16`}
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <div className="flex flex-col md:flex-row gap-8">
-          <div className="flex-shrink-0 h-80 md:h-96 w-48 md:w-64 rounded-lg overflow-hidden shadow-xl">
-            <Image
-              src={posterPath}
-              alt={`${displayTitle} poster`}
-              width={500}
-              height={750}
-              layout="responsive"
-              className="rounded-lg"
-            />
-          </div>
-
-          <div className="flex-grow">
-            <h1 className="text-4xl md:text-5xl font-extrabold mb-4">{displayTitle}</h1>
-            <p className="text-zinc-300 text-lg mb-2">
-              {year} • {genres} • {runtime} min
-            </p>
-            {movieDetails.tagline && (
-              <p className="text-zinc-400 italic mb-4 text-xl">"{movieDetails.tagline}"</p>
-            )}
-            <p className="text-lg leading-relaxed mb-6">{movieDetails.overview}</p>
-
-            {movieDetails.vote_average && (
-              <div className="flex items-center text-xl font-bold mb-4">
-                <span className="text-yellow-400 mr-2">★</span>
-                {movieDetails.vote_average.toFixed(1)} / 10
-                <span className="text-zinc-400 text-sm ml-2">({movieDetails.vote_count} votes)</span>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-4 mt-4">
-              {movieDetails.homepage && (
-                <a
-                  href={movieDetails.homepage}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-full font-semibold transition-all duration-300 shadow-md hover:shadow-[0_0_20px_#6366F1]"
+    const renderTrailerButton = () => {
+        if (movieDetails.trailerKey) {
+            return (
+                <motion.button
+                    whileHover={{
+                        scale: 1.05,
+                        y: -3,
+                        boxShadow: "0 10px 20px rgba(52, 211, 153, 0.6)",
+                    }}
+                    whileTap={{ scale: 0.95, y: 0 }}
+                    onClick={() => setIsTrailerModalOpen(true)}
+                    className="relative flex items-center px-6 py-3 rounded-full font-semibold transition-all duration-300 transform shadow-lg text-white bg-gradient-to-r from-green-500 to-teal-500 group overflow-hidden cursor-pointer"
                 >
-                  Visit Homepage
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 ml-2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25" />
-                  </svg>
-                </a>
-              )}
+                    <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-green-600 to-teal-600 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-500"></span>
+                    <span className="relative z-10 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 mr-2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.97 9.387 11.25 12l4.72 2.613Zm0 0-4.72 2.613L11.25 12l4.72-2.613Z" />
+                        </svg>
+                        Watch Trailer
+                    </span>
+                </motion.button>
+            );
+        }
+        return null;
+    };
 
-              {youtubeTrailerKey && (
-                <button
-                  onClick={() => setIsTrailerModalOpen(true)}
-                  className="inline-flex items-center bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full font-semibold transition-all duration-300 shadow-md hover:shadow-[0_0_20px_#EF4444]"
+    const renderWatchlistButton = () => {
+        if (isAuthenticated) {
+            return (
+                <motion.button
+                    whileHover={{
+                        scale: 1.05,
+                        y: -2,
+                        boxShadow: isAdded
+                            ? "0 0 20px rgba(34, 197, 94, 0.8)"
+                            : "0 0 20px rgba(147, 51, 234, 0.8)"
+                    }}
+                    whileTap={{ scale: 0.95, y: 0 }}
+                    onClick={isAdded ? handleRemoveFromWatchlist : handleAddToWatchlist}
+                    disabled={isAdding}
+                    className={`relative flex items-center px-6 py-3 rounded-full font-semibold transition-all duration-300 shadow-lg group overflow-hidden cursor-pointer
+                        ${isAdded
+                            ? 'bg-gradient-to-r from-green-500 to-green-700 text-white'
+                            : 'bg-gradient-to-r from-purple-600 to-purple-800 text-white'}
+                        ${isAdding && 'opacity-50 cursor-not-allowed'}`}
                 >
-                  Watch Trailer
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 ml-2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.97 9.387 11.25 12l4.72 2.613Zm0 0-4.72 2.613L11.25 12l4.72-2.613Z" />
-                  </svg>
-                </button>
-              )}
+                    <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-purple-800 to-purple-600 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-500"></span>
+                    <span className="relative z-10 flex items-center">
+                        {isAdding ? (
+                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        ) : isAdded ? (
+                            <FaHeart className="w-5 h-5 mr-2" />
+                        ) : (
+                            <FaRegHeart className="w-5 h-5 mr-2" />
+                        )}
+                        {isAdding ? 'Adding...' : isAdded ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                    </span>
+                </motion.button>
+            );
+        }
+        return null;
+    };
 
-              {/* Add to Watchlist Button */}
-              <button
-                onClick={handleAddToWatchlist}
-                disabled={adding}
-                className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-full font-semibold transition-all duration-300 shadow-md hover:shadow-[0_0_20px_#22C55E] disabled:opacity-60"
-              >
-                {adding ? 'Adding...' : 'Add to Watchlist'}
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 ml-2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-              </button>
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="relative min-h-screen pt-16 bg-[var(--color-background-primary)] text-[var(--color-text-primary)] transition-colors duration-300"
+        >
+            {backdropUrl && (
+                <div className="absolute inset-0 z-0 opacity-20">
+                    <Image
+                        src={backdropUrl}
+                        alt={`${movieDetails.title || movieDetails.name} backdrop`}
+                        layout="fill"
+                        objectFit="cover"
+                        priority
+                    />
+                </div>
+            )}
+            <div className="relative z-10 px-4 md:px-8 lg:px-16 py-10">
+                <div className="flex flex-col md:flex-row gap-8 lg:gap-12">
+                    <motion.div
+                        initial={{ opacity: 0, x: -50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="flex-shrink-0 w-full md:w-[300px] h-[450px] md:h-[450px] rounded-lg overflow-hidden shadow-2xl"
+                    >
+                        <Image
+                            src={posterUrl}
+                            alt={movieDetails.title || movieDetails.name}
+                            width={300}
+                            height={450}
+                            className="w-full h-full object-cover"
+                            priority
+                        />
+                    </motion.div>
+                    <div className="flex-grow">
+                        <motion.h1
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.2 }}
+                            className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4"
+                        >
+                            {movieDetails.title || movieDetails.name}
+                        </motion.h1>
+                        <motion.p
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.3 }}
+                            className="text-lg md:text-xl italic mb-4 text-[var(--color-accent)]"
+                        >
+                            {movieDetails.tagline}
+                        </motion.p>
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.4 }}
+                            className="flex items-center space-x-4 mb-6 text-sm md:text-base text-[var(--color-text-secondary)]"
+                        >
+                            <span className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                                {movieDetails.vote_average ? movieDetails.vote_average.toFixed(1) : 'N/A'} / 10
+                            </span>
+                            <span>|</span>
+                            <span>{movieDetails.release_date || movieDetails.first_air_date || 'N/A'}</span>
+                            <span>|</span>
+                            <span>{movieDetails.runtime ? `${movieDetails.runtime} min` : (movieDetails.episode_run_time && movieDetails.episode_run_time[0]) ? `${movieDetails.episode_run_time[0]} min` : 'N/A'}</span>
+                        </motion.div>
+                        <motion.p
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.5 }}
+                            className="text-base leading-relaxed mb-6"
+                        >
+                            {movieDetails.overview || 'No overview available.'}
+                        </motion.p>
+                        <motion.div
+                            className="flex flex-wrap gap-2 mb-6"
+                            variants={containerVariants}
+                            initial="hidden"
+                            animate="visible"
+                        >
+                            {movieDetails.genres && movieDetails.genres.map((genre) => (
+                                <motion.span
+                                    key={genre.id}
+                                    variants={itemVariants}
+                                    whileHover={{ scale: 1.1, y: -5, backgroundColor: '#a855f7', color: '#111827', borderColor: '#c084fc' }}
+                                    transition={{ duration: 0.2 }}
+                                    className="text-xs font-medium px-3 py-1 rounded-full bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] border border-[var(--color-accent)] cursor-pointer"
+                                >
+                                    {genre.name}
+                                </motion.span>
+                            ))}
+                        </motion.div>
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.7 }}
+                            className="flex items-center gap-4"
+                        >
+                            {renderTrailerButton()}
+                            {renderWatchlistButton()}
+                        </motion.div>
+                        {watchlistError && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="mt-4 text-sm text-red-400"
+                            >
+                                {watchlistError}
+                            </motion.div>
+                        )}
+                    </div>
+                </div>
             </div>
 
-            {/* Popup message */}
-            {popupMsg && (
-              <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-green-700 text-white px-6 py-3 rounded-full shadow-lg z-50 text-lg animate-bounce">
-                {popupMsg}
-              </div>
-            )}
-          </div>
-        </div>
-      </motion.div>
-
-      <TrailerPlayer
-        trailerKey={youtubeTrailerKey}
-        isOpen={isTrailerModalOpen}
-        onClose={() => setIsTrailerModalOpen(false)}
-      />
-    </div>
-  );
+            <TrailerPlayer
+                trailerKey={movieDetails.trailerKey}
+                isOpen={isTrailerModalOpen}
+                onClose={() => setIsTrailerModalOpen(false)}
+            />
+            <WatchlistSuccessPopup movie={watchlistPopupMovie} show={showWatchlistPopup} onClose={() => setShowWatchlistPopup(false)} />
+        </motion.div>
+    );
 }

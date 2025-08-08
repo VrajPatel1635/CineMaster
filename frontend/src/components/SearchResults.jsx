@@ -1,3 +1,4 @@
+// frontend/src/components/SearchResults.jsx
 import YouTube from "react-youtube";
 
 const SearchResults = ({ results }) => {

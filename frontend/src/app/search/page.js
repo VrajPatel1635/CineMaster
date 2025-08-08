@@ -1,8 +1,10 @@
+// frontend/src/app/search/page.js
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import MovieCard from '@/components/MovieCard';
+import MovieCardSkeleton from '@/components/MovieCardSkeleton';
 import { motion } from 'framer-motion';
 
 // Animation variants
@@ -88,9 +90,13 @@ function SearchResultsContent() {
       {loading && (
         <motion.div
           variants={itemVariants}
-          className="text-center text-xl text-indigo-400"
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 max-w-7xl mx-auto"
         >
-          Loading search results...
+          {Array.from({ length: 12 }).map((_, index) => (
+            <motion.div key={index} variants={itemVariants}>
+              <MovieCardSkeleton />
+            </motion.div>
+          ))}
         </motion.div>
       )}
 
@@ -115,18 +121,15 @@ function SearchResultsContent() {
       {!loading && !error && results.length > 0 && (
         <motion.div
           variants={containerVariants}
-          className="
-            grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6
-            max-w-7xl mx-auto
-          "
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 max-w-7xl mx-auto"
         >
-          {results.map((movie, index) => (
-            (movie.id && (movie.title || movie.name)) && (
+          {results.map((movie) =>
+            movie.id && (movie.title || movie.name) ? (
               <motion.div key={movie.id} variants={itemVariants}>
                 <MovieCard movie={movie} />
               </motion.div>
-            )
-          ))}
+            ) : null
+          )}
         </motion.div>
       )}
     </motion.div>

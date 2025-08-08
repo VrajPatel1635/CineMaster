@@ -1,10 +1,8 @@
-// src/components/Wrapper.js
+// src/app/login/Styles.js
 import styled, { keyframes, css } from "styled-components";
 
-// Define a transition time constant for consistency
-const TRANSITION_TIME = 0.5; // Increased slightly for smoother feel
+const TRANSITION_TIME = 0.5; 
 
-// Keyframes for the 'show' animation (remains CSS-driven)
 const showAnimation = keyframes`
   0%,
   49.99% {

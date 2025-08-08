@@ -1,355 +1,260 @@
-// src/components/Navbar.jsx
+// frontend/src/components/Navbar.jsx
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X, Search, LogIn } from 'lucide-react';
+import Image from 'next/image';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import ThemeToggle from './ThemeToggle';
+import { Menu, X, Search, UserCircle, LogIn, Sun, Moon, Home, Bookmark, User } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
+import { usePathname } from 'next/navigation';
 import SearchBar from './SearchBar';
-import Portal from './Portal';
-// import MagneticButton from './MagneticButton'; // <--- REMOVED: MagneticButton import
 
 const Navbar = () => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const searchIconRef = useRef(null);
-  const [searchDropdownPos, setSearchDropdownPos] = useState({ top: 0, right: 0, width: 0 });
+    const { user, logout, isAuthenticated } = useAuth();
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
+    const pathname = usePathname();
 
-  const closeAllMenus = () => {
-    setMenuOpen(false);
-    setSearchOpen(false);
-  };
+    const { isDarkMode, toggleTheme } = useTheme();
 
-  const calculateDropdownPosition = () => {
-    if (searchIconRef.current) {
-      const rect = searchIconRef.current.getBoundingClientRect();
-      setSearchDropdownPos({
-        top: rect.bottom + window.scrollY,
-        right: window.innerWidth - rect.right,
-        width: rect.width
-      });
-    }
-  };
+    const searchRef = useRef(null);
+    const profileRef = useRef(null);
+    const searchOverlayRef = useRef(null);
+    const [scrolled, setScrolled] = useState(false);
 
-  useEffect(() => {
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        closeAllMenus();
-      }
-    };
+    useEffect(() => {
+        const handleScroll = () => {
+            setScrolled(window.scrollY > 50);
+        };
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
 
-    const handleClickOutside = (event) => {
-      if (
-        searchOpen &&
-        searchIconRef.current && !searchIconRef.current.contains(event.target) &&
-        !event.target.closest('.search-dropdown-portal')
-      ) {
+    useEffect(() => {
+        const handler = (e) => {
+            if (searchOpen && searchOverlayRef.current && !searchOverlayRef.current.contains(e.target) && searchRef.current && !searchRef.current.contains(e.target)) {
+                setSearchOpen(false);
+            }
+            if (profileOpen && profileRef.current && !profileRef.current.contains(e.target)) {
+                setProfileOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [searchOpen, profileOpen]);
+
+    const closeAll = () => {
+        setMenuOpen(false);
         setSearchOpen(false);
-      }
+        setProfileOpen(false);
     };
 
-    if (searchOpen || menuOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.addEventListener('mousedown', handleClickOutside);
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.removeEventListener('keydown', handleEscape);
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.body.style.overflow = 'unset';
+    const menuVariants = {
+        hidden: { x: '100%' },
+        visible: { x: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+        exit: { x: '100%', transition: { duration: 0.3, ease: 'easeIn' } }
+    };
+
+    const searchVariants = {
+        hidden: { opacity: 0, scale: 0.95 },
+        visible: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
+        exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2, ease: 'easeIn' } }
+    };
+
+    const profileVariants = {
+        hidden: { opacity: 0, y: -20 },
+        visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } },
+        exit: { opacity: 0, y: -20, transition: { duration: 0.2 } }
+    };
+
+    // Check if the current path is a movie/tv detail page
+    const isDetailPage = pathname.startsWith('/details/');
+
+    if (isDetailPage) {
+        return null;
     }
 
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.body.style.overflow = 'unset';
-    };
-  }, [searchOpen, menuOpen]);
-
-  useEffect(() => {
-    if (menuOpen) {
-      setSearchOpen(false);
-    }
-  }, [menuOpen]);
-
-  useEffect(() => {
-    if (searchOpen) {
-      setMenuOpen(false);
-      calculateDropdownPosition();
-    }
-  }, [searchOpen]);
-
-  useEffect(() => {
-    const handleResizeOrScroll = () => {
-      if (searchOpen) {
-        calculateDropdownPosition();
-      }
-    };
-
-    window.addEventListener('resize', handleResizeOrScroll);
-    window.addEventListener('scroll', handleResizeOrScroll);
-
-    return () => {
-      window.removeEventListener('resize', handleResizeOrScroll);
-      window.removeEventListener('scroll', handleResizeOrScroll);
-    };
-  }, [searchOpen]);
-
-  // Framer Motion variants
-  const menuOverlayVariants = {
-    hidden: { x: '100%', opacity: 0, transition: { type: "tween", ease: "easeOut", duration: 0.4 } },
-    visible: { x: '0%', opacity: 1, transition: { type: "tween", ease: "easeOut", duration: 0.5 } },
-  };
-
-  const menuLinkVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-  };
-
-  const searchDropdownVariants = {
-    hidden: { opacity: 0, scale: 0.8, y: -20 },
-    visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 400, damping: 30 } },
-  };
-
-  // NavLinkItem Component with "pill" hover effect (remains unchanged)
-  const NavLinkItem = ({ href, children }) => (
-    <Link
-      href={href}
-      onClick={closeAllMenus}
-      className="relative group block overflow-hidden"
-    >
-      <motion.span
-        className="relative z-10 block px-4 py-2 rounded-full text-text-primary text-lg font-semibold"
-        initial={{ color: 'var(--color-text-primary)' }}
-        whileHover={{ color: 'var(--color-background-primary)' }}
-        transition={{ duration: 0.3 }}
-      >
-        {children}
-      </motion.span>
-      <motion.span
-        className="absolute inset-0 bg-accent rounded-full z-0"
-        initial={{ scaleX: 0 }}
-        whileHover={{ scaleX: 1 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-        style={{ originX: 0.5 }}
-      />
-    </Link>
-  );
-
-  return (
-    <nav className="
-      bg-[#161B22] backdrop-blur-md
-      shadow-lg shadow-text-primary/10 dark:shadow-text-primary/20
-      transition duration-300
-      fixed w-full z-50
-      py-4 sm:py-3
-    ">
-      <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-        {/* Logo */}
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <Link href="/" className="
-            text-3xl sm:text-2xl font-extrabold tracking-wide
-            text-accent hover:text-accent/80 transition-opacity
-          ">
-            CineMaster
-          </Link>
-        </motion.div>
-
-        {/* Desktop Navigation Links */}
-        <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
-          <NavLinkItem href="/">Home</NavLinkItem>
-          <NavLinkItem href="/watchlist">Watchlist</NavLinkItem>
-          <NavLinkItem href="/about">About</NavLinkItem>
-          <NavLinkItem href="/login">
-            <span className="flex items-center gap-2">
-              <LogIn size={20} className="hidden lg:inline" />
-              Login / Sign Up
-            </span>
-          </NavLinkItem>
-        </div>
-
-        {/* Right-side Utility Icons (Search, Theme, Menu Toggle) */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          {/* Search Icon (reverted from MagneticButton) */}
-          <motion.button
-            ref={searchIconRef}
-            onClick={() => setSearchOpen(!searchOpen)}
-            className="text-text-primary hover:text-accent transition-colors p-2 rounded-full hover:bg-background-primary/50 cursor-pointer"
-            aria-label="Toggle search"
-            whileHover={{ scale: 1.1 }} // Re-added original hover animation
-            whileTap={{ scale: 0.9 }}  // Re-added original tap animation
-          >
-            <Search size={24} />
-          </motion.button>
-
-          {/* Theme Toggle (reverted from MagneticButton) */}
-          <div className="flex justify-center"> {/* Keep the div wrapper for ThemeToggle */}
-            <ThemeToggle /> {/* Assuming ThemeToggle is already a motion.button or has its own animations */}
-          </div>
-
-          {/* Mobile Menu Toggle Icon (reverted from MagneticButton) */}
-          <motion.button
-            onClick={() => setMenuOpen(true)}
-            className="md:hidden text-text-primary hover:text-accent transition-colors p-2 rounded-full hover:bg-background-primary/50"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            whileHover={{ scale: 1.1 }} // Re-added original hover animation
-            whileTap={{ scale: 0.9 }}  // Re-added original tap animation
-          >
-            <Menu size={28} />
-          </motion.button>
-        </div>
-      </div>
-
-      {/* Full-Screen Mobile Navigation Overlay */}
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            className={`
-              fixed inset-0 z-40 bg-background-primary
-              flex flex-col items-center justify-center
-              overflow-y-auto px-6 py-16
-            `}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            variants={menuOverlayVariants}
-          >
-            {/* Close Button for Full-Screen Menu (reverted from MagneticButton) */}
-            <motion.button
-              onClick={() => setMenuOpen(false)}
-              className="absolute top-6 right-6 text-text-primary hover:text-accent transition-colors p-2 rounded-full hover:bg-background-secondary/50"
-              aria-label="Close menu"
-              whileHover={{ scale: 1.2, rotate: 90 }} // Re-added original hover animation
-              whileTap={{ scale: 0.9 }}  // Re-added original tap animation
-            >
-              <X size={36} />
-            </motion.button>
-
-            <motion.div
-              className="
-                w-full max-w-sm
-                grid grid-cols-1 gap-y-10
-                text-center
-                text-text-primary
-              "
-              initial="hidden"
-              animate="visible"
-              variants={{
-                visible: {
-                  transition: {
-                    staggerChildren: 0.1,
-                  },
-                },
-              }}
-            >
-              <div className="flex flex-col gap-6">
-                <h3 className="text-text-secondary text-sm uppercase tracking-wider mb-2">Menu</h3>
-                <motion.div variants={menuLinkVariants}>
-                  <Link href="/" onClick={closeAllMenus} className="
-                    text-4xl font-extrabold
-                    hover:text-accent transition-colors duration-200 ease-in-out
-                    leading-tight block
-                  ">
-                    Home
-                  </Link>
+    return (
+        <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? "backdrop-blur-xl bg-[color:var(--color-background-primary)]/70 shadow-lg" : "bg-transparent"}`}>
+            <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+                {/* Logo */}
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="cursor-pointer">
+                    <Link href="/" className="text-3xl font-bold tracking-wider text-[color:var(--color-accent)]">
+                        CineMaster
+                    </Link>
                 </motion.div>
-                <motion.div variants={menuLinkVariants}>
-                  <Link href="/watchlist" onClick={closeAllMenus} className="
-                    text-4xl font-extrabold
-                    hover:text-accent transition-colors duration-200 ease-in-out
-                    leading-tight block
-                  ">
-                    Watchlist
-                  </Link>
-                </motion.div>
-                <motion.div variants={menuLinkVariants}>
-                  <Link href="/about" onClick={closeAllMenus} className="
-                    text-4xl font-extrabold
-                    hover:text-accent transition-colors duration-200 ease-in-out
-                    leading-tight block
-                  ">
-                    About
-                  </Link>
-                </motion.div>
-              </div>
 
-              <div className="flex flex-col gap-6 mt-8">
-                <h3 className="text-text-secondary text-sm uppercase tracking-wider mb-2">Account</h3>
-                <motion.div variants={menuLinkVariants}>
-                  <Link
-                    href="/login"
-                    onClick={closeAllMenus}
-                    className="
-                      text-4xl font-extrabold
-                      hover:text-accent transition-colors duration-200 ease-in-out
-                      leading-tight block
-                    "
-                  >
-                    Login / Sign Up
-                  </Link>
-                </motion.div>
-                <motion.div variants={menuLinkVariants}>
-                  <Link
-                    href="/settings"
-                    onClick={closeAllMenus}
-                    className="
-                      text-4xl font-extrabold
-                      hover:text-accent transition-colors duration-200 ease-in-out
-                      leading-tight block
-                    "
-                  >
-                    Settings
-                  </Link>
-                </motion.div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                {/* Desktop Navigation Links */}
+                <div className="hidden md:flex items-center space-x-8">
+                    <Link href="/" className="group relative flex items-center space-x-2 px-3 py-2 text-[color:var(--color-text-secondary)] transition-colors duration-300 hover:text-[color:var(--color-accent)] cursor-pointer">
+                        <Home size={18} />
+                        <span>Home</span>
+                        <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[color:var(--color-accent)] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </Link>
+                    <Link href="/watchlist" className="group relative flex items-center space-x-2 px-3 py-2 text-[color:var(--color-text-secondary)] transition-colors duration-300 hover:text-[color:var(--color-accent)] cursor-pointer">
+                        <Bookmark size={18} />
+                        <span>Watchlist</span>
+                        <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[color:var(--color-accent)] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </Link>
+                    {isAuthenticated && (
+                        <Link href="/profile" className="group relative flex items-center space-x-2 px-3 py-2 text-[color:var(--color-text-secondary)] transition-colors duration-300 hover:text-[color:var(--color-accent)] cursor-pointer">
+                            <User size={18} />
+                            <span>Profile</span>
+                            <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[color:var(--color-accent)] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                        </Link>
+                    )}
+                </div>
 
-      {/* Search Bar Pop-up rendered via Portal */}
-      <AnimatePresence>
-        {searchOpen && (
-          <Portal wrapperId="search-dropdown-root">
-            <motion.div
-              className="
-                search-dropdown-portal
-                absolute
-                bg-background-secondary p-4 rounded-lg shadow-xl
-                border border-border
-                z-[100]
-                transform origin-top-right
-                text-text-primary
-              "
-              style={{
-                top: `${searchDropdownPos.top + 10}px`,
-                right: `${searchDropdownPos.right - 10}px`,
-                minWidth: `clamp(280px, 90vw, 450px)`
-              }}
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              variants={searchDropdownVariants}
-            >
-              <SearchBar onSearchSubmit={closeAllMenus} />
-              <motion.button
-                onClick={() => setSearchOpen(false)}
-                className="absolute -top-3 -right-3 bg-accent text-white rounded-full p-1 leading-none"
-                aria-label="Close search"
-                whileHover={{ scale: 1.2, rotate: 90 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <X size={20} />
-              </motion.button>
-            </motion.div>
-          </Portal>
-        )}
-      </AnimatePresence>
-    </nav>
-  );
+                {/* Action Buttons */}
+                <div className="flex items-center space-x-4">
+                    {/* Search Button */}
+                    <motion.button
+                        ref={searchRef}
+                        onClick={() => { setSearchOpen(!searchOpen); setProfileOpen(false); setMenuOpen(false); }}
+                        className="p-3 rounded-full transition-colors duration-300 text-[color:var(--color-text-secondary)] hover:bg-[color:var(--color-background-secondary)] hover:text-[color:var(--color-text-primary)] cursor-pointer"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                    >
+                        <Search size={22} />
+                    </motion.button>
+
+                    {/* Theme Toggle */}
+                    <motion.button
+                        onClick={toggleTheme}
+                        className="p-3 rounded-full transition-colors duration-300 text-[color:var(--color-text-secondary)] hover:bg-[color:var(--color-background-secondary)] hover:text-[color:var(--color-accent)] cursor-pointer"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                    >
+                        {isDarkMode ? <Sun size={22} /> : <Moon size={22} />}
+                    </motion.button>
+
+                    {/* Authentication */}
+                    {isAuthenticated ? (
+                        <div className="relative" ref={profileRef}>
+                            <motion.div
+                                onClick={() => setProfileOpen(!profileOpen)}
+                                className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer overflow-hidden ring-2 ring-[color:var(--color-text-primary)] hover:ring-[color:var(--color-accent)] transition-all duration-300"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                {user?.avatarUrl ? (
+                                    <Image src={user.avatarUrl} alt="avatar" width={40} height={40} className="rounded-full" />
+                                ) : <UserCircle size={28} className="text-[color:var(--color-background-primary)] bg-[color:var(--color-text-primary)] rounded-full" />}
+                            </motion.div>
+
+                            <AnimatePresence>
+                                {profileOpen && (
+                                    <motion.div
+                                        initial="hidden"
+                                        animate="visible"
+                                        exit="exit"
+                                        variants={profileVariants}
+                                        className="absolute right-0 mt-2 w-48 rounded-lg shadow-2xl overflow-hidden bg-[color:var(--color-background-secondary)] border border-[color:var(--color-background-tertiary)]"
+                                    >
+                                        <div className="px-4 py-3 border-b border-[color:var(--color-background-tertiary)]">
+                                            <p className="font-bold text-[color:var(--color-text-primary)]">{user?.name || "User"}</p>
+                                            <p className="text-sm text-[color:var(--color-text-secondary)]">{user?.email || "user@example.com"}</p>
+                                        </div>
+                                        <Link href="/profile" className="flex items-center gap-3 px-4 py-3 transition-all duration-200 hover:bg-[color:var(--color-background-tertiary)] hover:text-[color:var(--color-accent)] text-[color:var(--color-text-secondary)] cursor-pointer" onClick={closeAll}>
+                                            <User size={18} /> My Profile
+                                        </Link>
+                                        <Link href="/watchlist" className="flex items-center gap-3 px-4 py-3 transition-all duration-200 hover:bg-[color:var(--color-background-tertiary)] hover:text-[color:var(--color-accent)] text-[color:var(--color-text-secondary)] cursor-pointer" onClick={closeAll}>
+                                            <Bookmark size={18} /> Watchlist
+                                        </Link>
+                                        <button onClick={() => { logout(); closeAll(); }} className="w-full text-left flex items-center gap-3 px-4 py-3 transition-all duration-200 hover:bg-red-500 hover:text-white text-[color:var(--color-text-secondary)] cursor-pointer">
+                                            <LogIn size={18} /> Logout
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    ) : (
+                        <Link href="/login" onClick={closeAll} className="hidden md:flex items-center space-x-2 px-6 py-3 rounded-full transition-all duration-300 bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg hover:shadow-xl hover:scale-105 cursor-pointer">
+                            <LogIn size={18} />
+                            <span>Login / Sign Up</span>
+                        </Link>
+                    )}
+
+                    {/* Mobile Menu Button */}
+                    <div className="md:hidden">
+                        <motion.button
+                            onClick={() => { setMenuOpen(true); setSearchOpen(false); setProfileOpen(false); }}
+                            className="p-3 rounded-full transition-colors duration-300 text-[color:var(--color-text-secondary)] hover:bg-[color:var(--color-background-secondary)] cursor-pointer"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                        >
+                            <AnimatePresence mode="wait">
+                                {menuOpen ? (
+                                    <motion.div key="x-icon" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }}>
+                                        <X size={24} />
+                                    </motion.div>
+                                ) : (
+                                    <motion.div key="menu-icon" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.2 }}>
+                                        <Menu size={24} />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile Menu */}
+            <AnimatePresence>
+                {menuOpen && (
+                    <motion.div className="fixed inset-0 flex flex-col items-center justify-center md:hidden bg-[color:var(--color-background-primary)]/95 backdrop-blur-xl" variants={menuVariants} initial="hidden" animate="visible" exit="exit">
+                        <motion.button onClick={closeAll} className="absolute top-4 right-4 text-[color:var(--color-text-primary)] p-2 rounded-full hover:bg-[color:var(--color-background-secondary)] transition-colors cursor-pointer" whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}>
+                            <X size={30} />
+                        </motion.button>
+                        <div className="space-y-8 text-center mt-10">
+                            <Link href="/" onClick={closeAll} className="text-3xl font-medium transition flex items-center justify-center space-x-3 text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-accent)]">
+                                <Home size={32} />
+                                <span>Home</span>
+                            </Link>
+                            <Link href="/watchlist" onClick={closeAll} className="text-3xl font-medium transition flex items-center justify-center space-x-3 text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-accent)]">
+                                <Bookmark size={32} />
+                                <span>Watchlist</span>
+                            </Link>
+                            {isAuthenticated ? (
+                                <>
+                                    <Link href="/profile" onClick={closeAll} className="text-3xl font-medium transition flex items-center justify-center space-x-3 text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-accent)]">
+                                        <User size={32} />
+                                        <span>Profile</span>
+                                    </Link>
+                                    <button onClick={() => { logout(); closeAll(); }} className="text-3xl w-full font-medium transition flex items-center justify-center space-x-3 text-[color:var(--color-text-secondary)] hover:text-red-500 cursor-pointer">
+                                        <LogIn size={32} />
+                                        <span>Logout</span>
+                                    </button>
+                                </>
+                            ) : (
+                                <Link href="/login" onClick={closeAll} className="text-3xl font-medium transition flex items-center justify-center space-x-3 text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-accent)]">
+                                    <LogIn size={32} />
+                                    <span>Login / Sign Up</span>
+                                </Link>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Search Overlay */}
+            <AnimatePresence>
+                {searchOpen && (
+                    <motion.div className="fixed inset-0 backdrop-blur-xl flex items-center justify-center bg-[color:var(--color-background-primary)]/80" initial="hidden" animate="visible" exit="exit" variants={searchVariants}>
+                        <motion.div ref={searchOverlayRef} className="w-11/12 md:w-2/3 p-4 rounded-xl shadow-2xl relative bg-[color:var(--color-background-secondary)]">
+                            <SearchBar onSearchSubmit={closeAll} />
+                            <motion.button onClick={() => setSearchOpen(false)} className="absolute top-4 right-4 p-2 rounded-full text-[color:var(--color-text-secondary)] hover:bg-[color:var(--color-background-tertiary)] transition-colors cursor-pointer" whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}>
+                                <X size={24} />
+                            </motion.button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </nav>
+    );
 };
 
 export default Navbar;

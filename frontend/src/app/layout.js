@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider } from '../context/ThemeContext';
+import { Toaster } from 'react-hot-toast'; 
 
 export const metadata = {
   title: 'CineMaster',
@@ -19,6 +20,7 @@ export default function RootLayout({ children }) {
             <Navbar />
             <main className="min-h-screen">{children}</main>
             <Footer />
+            <Toaster position="top-center" reverseOrder={false} /> 
           </ThemeProvider>
         </AuthProvider>
       </body>

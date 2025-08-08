@@ -1,36 +1,59 @@
+// src/components/AIPicksSection.jsx 
 'use client';
 
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Image from "next/image";
-import { X } from 'lucide-react';
+import Link from 'next/link';
 import gsap from 'gsap';
+import { Star } from 'lucide-react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { motion } from 'framer-motion';
-
 import TrailerPlayer from '@/components/TrailerPlayer';
+import { useTheme } from '@/context/ThemeContext';
+import MovieCardSkeleton from "./MovieCardSkeleton";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function AIPicksSection() {
+    const { isDarkMode } = useTheme();
+
     const [hollywood, setHollywood] = useState([]);
     const [bollywood, setBollywood] = useState([]);
+    const [popularMovies, setPopularMovies] = useState([]);
+    const [topRatedMovies, setTopRatedMovies] = useState([]);
+
     const [selectedTrailer, setSelectedTrailer] = useState(null);
+
     const [loadingHollywood, setLoadingHollywood] = useState(true);
     const [loadingBollywood, setLoadingBollywood] = useState(true);
+    const [loadingPopular, setLoadingPopular] = useState(true);
+    const [loadingTopRated, setLoadingTopRated] = useState(true);
     const [errorHollywood, setErrorHollywood] = useState(null);
     const [errorBollywood, setErrorBollywood] = useState(null);
+    const [errorPopular, setErrorPopular] = useState(null);
+    const [errorTopRated, setErrorTopRated] = useState(null);
 
     const hollywoodRef = useRef(null);
     const bollywoodRef = useRef(null);
+    const popularRef = useRef(null);
+    const topRatedRef = useRef(null);
 
     useEffect(() => {
-        fetchTrendingMoviesFromBackend({ language: "en-US" }, setHollywood, setLoadingHollywood, setErrorHollywood);
-        fetchTrendingMoviesFromBackend({ language: "en-US", region: "IN", originalLanguage: "hi" }, setBollywood, setLoadingBollywood, setErrorBollywood);
+        const fetchAllMovies = async () => {
+            await Promise.all([
+                fetchTrendingMoviesFromBackend({ language: "en-US" }, setHollywood, setLoadingHollywood, setErrorHollywood),
+                fetchTrendingMoviesFromBackend({ language: "en-US", region: "IN", originalLanguage: "hi" }, setBollywood, setLoadingBollywood, setErrorBollywood),
+                fetchMoviesFromBackend('/api/popular-movies', setPopularMovies, setLoadingPopular, setErrorPopular),
+                fetchMoviesFromBackend('/api/top-rated-movies', setTopRatedMovies, setLoadingTopRated, setErrorTopRated),
+            ]);
+        };
+        fetchAllMovies();
     }, []);
 
     useEffect(() => {
         const animateSection = (el) => {
+            if (!el) return;
             gsap.fromTo(el,
                 { opacity: 0, y: 50 },
                 {
@@ -41,21 +64,38 @@ export default function AIPicksSection() {
                     scrollTrigger: {
                         trigger: el,
                         start: 'top 85%',
+                        // markers: true, // Uncomment for debugging scroll trigger
                     },
                 }
             );
         };
 
-        if (hollywoodRef.current) animateSection(hollywoodRef.current);
-        if (bollywoodRef.current) animateSection(bollywoodRef.current);
-    }, [hollywood, bollywood]);
+        if (hollywoodRef.current && !loadingHollywood) animateSection(hollywoodRef.current);
+        if (bollywoodRef.current && !loadingBollywood) animateSection(bollywoodRef.current);
+        if (popularRef.current && !loadingPopular) animateSection(popularRef.current);
+        if (topRatedRef.current && !loadingTopRated) animateSection(topRatedRef.current);
+    }, [hollywood, bollywood, popularMovies, topRatedMovies, loadingHollywood, loadingBollywood, loadingPopular, loadingTopRated]);
+
+    const fetchMoviesFromBackend = async (endpoint, setState, setLoading, setError) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const { data } = await axios.get(`http://localhost:5000${endpoint}`);
+            setState(data);
+        } catch (error) {
+            console.error(`Error fetching movies from backend (${endpoint}):`, error);
+            setError("Failed to load movies. Please try again later.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchTrendingMoviesFromBackend = async (params, setState, setLoading, setError) => {
         setLoading(true);
         setError(null);
         try {
             const queryString = new URLSearchParams(params).toString();
-            const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/trending-picks?${queryString}`);
+            const { data } = await axios.get(`http://localhost:5000/api/trending-picks?${queryString}`);
             setState(data);
         } catch (error) {
             console.error(`Error fetching trending movies from backend:`, error);
@@ -68,7 +108,7 @@ export default function AIPicksSection() {
     const cardVariants = {
         hidden: { opacity: 0, scale: 0.95, y: 20 },
         visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.4 } },
-        whileHover: { scale: 1.05, rotate: 1 }
+        whileHover: { scale: 1.05 }
     };
 
     const Card = ({ movie }) => (
@@ -77,83 +117,185 @@ export default function AIPicksSection() {
             initial="hidden"
             animate="visible"
             whileHover="whileHover"
-            className="relative group rounded-xl overflow-hidden shadow-md transform transition-all duration-500 ease-in-out 
-                       dark:hover:shadow-[0_0_40px_#E5E5CB] hover:shadow-[0_0_40px_#f9ad5c] hover:rotate-[1deg] cursor-pointer 
-                       bg-[#31363F] border border-[#222831] hover:border-transparent"
+            className="relative min-w-[160px] sm:min-w-[180px] md:min-w-[200px] max-w-[240px] mx-2 group cursor-pointer 
+                   rounded-2xl overflow-hidden border bg-white/80 dark:bg-zinc-900/40 backdrop-blur-lg 
+                   border-zinc-200 dark:border-zinc-800 shadow-md hover:shadow-xl hover:scale-[1.03] 
+                   transition-all duration-500"
         >
-            <div className="relative z-10">
-                <Image
-                    src={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '/images/placeholder-poster.png'}
-                    alt={movie.title}
-                    width={300}
-                    height={450}
-                    className="w-full h-[450px] object-cover group-hover:opacity-90 group-hover:blur-[1px] transition duration-300"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col items-center justify-end p-4 text-center transform translate-y-full group-hover:translate-y-0 ease-in-out z-20">
-                    <h3 className="text-white text-xl font-semibold mb-2 line-clamp-2 drop-shadow-md">{movie.title}</h3>
-                    <p className="text-white text-sm mb-4 line-clamp-3">{movie.overview || "No overview available."}</p>
-                    {movie.trailerUrl ? (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedTrailer(movie.trailerUrl);
-                            }}
-                            className="px-6 py-3 bg-[#F0DBDB] hover:bg-[#f0b7b7] dark:bg-[#a17a67] dark:hover:bg-[#4c3b32] rounded-full text-black font-semibold flex items-center space-x-2 transition-colors duration-300 shadow-md cursor-pointer"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.97 9.387 11.25 12l4.72 2.613Zm0 0-4.72 2.613L11.25 12l4.72-2.613Z" />
-                            </svg>
-                            <span>Play Trailer</span>
-                        </button>
-                    ) : (
-                        <p className="text-white text-sm italic">Trailer Not Available</p>
-                    )}
+            <Link href={`/movie/${movie.id}?media_type=${movie.media_type || 'movie'}`} passHref>
+                <div className="relative">
+                    {/* Poster */}
+                    <Image
+                        src={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '/images/placeholder-poster.png'}
+                        alt={movie.title || movie.name}
+                        width={220}
+                        height={330}
+                        className="w-full h-[250px] sm:h-[280px] md:h-[300px] lg:h-[330px] object-cover rounded-2xl 
+                               group-hover:scale-[1.02] group-hover:brightness-90 transition-transform duration-500"
+                        priority
+                    />
+
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent opacity-0 
+                                group-hover:opacity-100 transition-opacity duration-500 z-10 rounded-2xl" />
+
+                    {/* Movie Info */}
+                    <div className="absolute inset-0 flex flex-col justify-end items-center p-3 text-center opacity-0 
+                                group-hover:opacity-100 transition-all duration-500 z-20 translate-y-6 
+                                group-hover:translate-y-0">
+                        <h3 className="text-white text-sm sm:text-base font-semibold mb-2 line-clamp-2 drop-shadow-lg">
+                            {movie.title || movie.name}
+                        </h3>
+                        <p className="text-white text-xs sm:text-sm line-clamp-3 mb-3 opacity-80">
+                            {movie.overview || "No overview available."}
+                        </p>
+                        {movie.trailerUrl ? (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTrailer(movie.trailerUrl);
+                                }}
+                                className="px-4 py-1.5 bg-gradient-to-r from-rose-500 to-fuchsia-600 
+                                       hover:from-pink-500 hover:to-violet-600 text-white text-xs font-semibold 
+                                       rounded-full shadow-md transition duration-300"
+                            >
+                                ▶ Watch Trailer
+                            </button>
+                        ) : (
+                            <p className="text-white text-xs italic">No Trailer</p>
+                        )}
+                    </div>
+
+                    {/* Tooltip / Hover Preview */}
+                    <div className="absolute top-2 right-2 bg-white dark:bg-zinc-800 text-xs px-2 py-1 rounded-full 
+                                shadow-sm opacity-0 group-hover:opacity-100 transition duration-300 z-30">
+                        {movie.vote_average && (
+                            <span className="flex items-center gap-1 text-yellow-500 font-bold">
+                                <Star className="w-4 h-4 fill-yellow-500" />
+                                {movie.vote_average.toFixed(1)}
+                            </span>
+                        )}
+                    </div>
                 </div>
-            </div>
+            </Link>
         </motion.div>
     );
 
     return (
-        <div className="dark:bg-[#1A120B] dark:text-[#D5CEA3] bg-[#FEFCF3] text-[#DBA39A] px-6 py-10 space-y-16">
-            <div className="text-center mb-12">
-                <h1 className="text-4xl font-bold mb-2">🧠 AI Picks For You</h1>
-                <p className="text-lg italic">Based on trending genres, user history, or random logic:</p>
-                <p className="text-xl mt-1 font-medium">“CineMaster thinks you’ll love this!”</p>
-            </div>
-
+        <div className={`px-6 py-10 space-y-16
+            bg-[var(--color-background-primary)] text-[var(--color-text-primary)]`}>
             {/* Hollywood Section */}
             <section ref={hollywoodRef}>
-                <h2 className="text-3xl font-bold mb-6">Hollywood Trending</h2>
-                {loadingHollywood && <p className="text-center text-lg">Loading Hollywood picks...</p>}
+                <h2 className="text-3xl font-bold mb-4 text-[var(--color-accent)]">Hollywood Trending</h2>
+                {loadingHollywood && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <MovieCardSkeleton key={i} />
+                        ))}
+                    </div>
+                )}
+
                 {errorHollywood && <p className="text-center text-lg text-red-500">{errorHollywood}</p>}
                 {!loadingHollywood && !errorHollywood && hollywood.length === 0 && (
-                    <p className="text-center text-lg text-zinc-400">No Hollywood movies found.</p>
+                    <p className={`text-center text-lg ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>No Hollywood movies found.</p>
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div
+                    className="flex overflow-x-auto space-x-4 pb-4 no-scrollbar snap-x snap-mandatory "
+                    style={{ WebkitOverflowScrolling: 'touch' }}
+                >
                     {hollywood.map((movie) => (
-                        <Card key={movie.id} movie={movie} />
+                        <div className="snap-start" key={movie.id}>
+                            <Card movie={movie} />
+                        </div>
                     ))}
                 </div>
             </section>
 
             {/* Bollywood Section */}
             <section ref={bollywoodRef}>
-                <h2 className="text-3xl font-bold mb-6">Bollywood Trending</h2>
-                {loadingBollywood && <p className="text-center text-lg">Loading Bollywood picks...</p>}
+                <h2 className="text-3xl font-bold mb-4 text-[var(--color-accent)]">Bollywood Trending</h2>
+                {loadingBollywood && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <MovieCardSkeleton key={i} />
+                        ))}
+                    </div>
+                )}
+
                 {errorBollywood && <p className="text-center text-lg text-red-500">{errorBollywood}</p>}
                 {!loadingBollywood && !errorBollywood && bollywood.length === 0 && (
-                    <p className="text-center text-lg text-zinc-400">No Bollywood movies found.</p>
+                    <p className={`text-center text-lg ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>No Bollywood movies found.</p>
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div
+                    className="flex overflow-x-auto space-x-4 pb-4 no-scrollbar snap-x snap-mandatory"
+                    style={{ WebkitOverflowScrolling: 'touch' }}
+                >
                     {bollywood.map((movie) => (
-                        <Card key={movie.id} movie={movie} />
+                        <div className="snap-start" key={movie.id}>
+                            <Card movie={movie} />
+                        </div>
                     ))}
                 </div>
             </section>
 
+            {/* NEW: Popular Movies Section */}
+            <section ref={popularRef}>
+                <h2 className="text-3xl font-bold mb-4 text-[var(--color-accent)]">Popular Movies</h2>
+                {loadingPopular && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <MovieCardSkeleton key={i} />
+                        ))}
+                    </div>
+                )}
+
+                {errorPopular && <p className="text-center text-lg text-red-500">{errorPopular}</p>}
+                {!loadingPopular && !errorPopular && popularMovies.length === 0 && (
+                    <p className={`text-center text-lg ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>No popular movies found.</p>
+                )}
+                <div
+                    className="flex overflow-x-auto space-x-4 pb-4 no-scrollbar snap-x snap-mandatory"
+                    style={{ WebkitOverflowScrolling: 'touch' }}
+                >
+                    {popularMovies.map((movie) => (
+                        <div className="snap-start" key={movie.id}>
+                            <Card movie={movie} />
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            {/* NEW: Top Rated Movies Section */}
+            <section ref={topRatedRef}>
+                <h2 className="text-3xl font-bold mb-4 text-[var(--color-accent)]">Top Rated Movies</h2>
+                {loadingTopRated && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <MovieCardSkeleton key={i} />
+                        ))}
+                    </div>
+                )}
+
+                {errorTopRated && <p className="text-center text-lg text-red-500">{errorTopRated}</p>}
+                {!loadingTopRated && !errorTopRated && topRatedMovies.length === 0 && (
+                    <p className={`text-center text-lg ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>No top rated movies found.</p>
+                )}
+                <div
+                    className="flex overflow-x-auto space-x-4 pb-4 no-scrollbar snap-x snap-mandatory"
+                    style={{ WebkitOverflowScrolling: 'touch' }}
+                >
+                    {topRatedMovies.map((movie) => (
+                        <div className="snap-start" key={movie.id}>
+                            <Card movie={movie} />
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+
+            {/* Trailer Popup */}
             <TrailerPlayer
-                trailerKey={selectedTrailer ? selectedTrailer.split('https://www.youtube.com/watch?v=')[1] : null}
+                trailerKey={selectedTrailer ? selectedTrailer.split('v=')[1]?.split('&')[0] : null}
                 isOpen={!!selectedTrailer}
                 onClose={() => setSelectedTrailer(null)}
             />

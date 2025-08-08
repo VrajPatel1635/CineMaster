@@ -1,65 +1,102 @@
+// src/context/AuthContext.js
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 
-// Create Auth Context
+// Create a context for authentication
 const AuthContext = createContext();
 
-// AuthProvider component
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [user, setUser] = useState(null); // Stores current user object
+  const [token, setToken] = useState(null); // Stores the authentication token
+  const [authLoading, setAuthLoading] = useState(true); // Tracks loading state
 
-  // Load user from localStorage on initial load
+  // Load user and token from localStorage on first mount
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
+    const storedToken = localStorage.getItem('token'); // Get stored token
 
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    if (storedUser && storedUser !== 'undefined' && storedToken && storedToken !== 'undefined') {
+      try {
+        setUser(JSON.parse(storedUser));
+        setToken(storedToken); // Set the token state
+        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      } catch (error) {
+        console.error("Error parsing stored user or token:", error);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        setUser(null);
+        setToken(null);
+      }
     }
 
     setAuthLoading(false);
   }, []);
 
-  // Login
+  // Login function
   const login = async (email, password) => {
-    const res = await axios.post('/api/login', { email, password });
-    const { user, token } = res.data;
+    try {
+      const res = await axios.post('http://localhost:5000/api/login', { email, password });
+      const { user, token: receivedToken } = res.data; // Destructure token as receivedToken to avoid name conflict
 
-    setUser(user);
-    localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('token', token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setUser(user);
+      setToken(receivedToken); // Set the token state
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('token', receivedToken);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
+      return { success: true };
+    } catch (error) {
+      console.error("Login error:", error.response?.data || error.message);
+      return { success: false, message: error.response?.data?.message || 'Login failed' };
+    }
   };
 
-  // Signup
+  // Signup function
   const signup = async (email, password) => {
-    const res = await axios.post('/api/register', { email, password });
-    const { user, token } = res.data;
+    try {
+      const res = await axios.post('http://localhost:5000/api/register', { email, password });
+      const { user, token: receivedToken } = res.data; // Destructure token as receivedToken
 
-    setUser(user);
-    localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('token', token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setUser(user);
+      setToken(receivedToken); // Set the token state
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('token', receivedToken);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
+      return { success: true };
+    } catch (error) {
+      console.error("Signup error:", error.response?.data || error.message);
+      return { success: false, message: error.response?.data?.message || 'Signup failed' };
+    }
   };
 
-  // Logout
+  // Logout function
   const logout = () => {
     setUser(null);
+    setToken(null); // Clear the token state
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     delete axios.defaults.headers.common['Authorization'];
   };
 
+  const isAuthenticated = !!user;
+
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, authLoading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token, // <--- Added token here!
+        isAuthenticated,
+        login,
+        signup,
+        logout,
+        authLoading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook to access AuthContext
+// Hook to use AuthContext values
 export const useAuth = () => useContext(AuthContext);
