@@ -12,7 +12,7 @@ import WatchlistSuccessPopup from '@/components/WatchlistSuccessPopup';
 import { useAuth } from '@/context/AuthContext';
 import styles from './movie.module.css';
 
-const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+const serverUrl = process.env.NEXT_PUBLIC_API_URL;
 
 /* Framer variants */
 const containerVariants = {

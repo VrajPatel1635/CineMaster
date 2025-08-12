@@ -11,6 +11,7 @@ import MovieCard from '@/components/MovieCard';
 import MovieCardSkeleton from '@/components/MovieCardSkeleton';
 
 gsap.registerPlugin(ScrollTrigger);
+const serverUrl = process.env.NEXT_PUBLIC_API_URL;
 
 import { useAuth } from '@/context/AuthContext';
 
@@ -36,7 +37,7 @@ export default function RecommendationsSection({ userId }) {
             setLoading(true);
             setError(null);
             try {
-                const { data } = await axios.get(`http://localhost:5000/api/recommendations?userId=${userId}`);
+                const { data } = await axios.get(`${serverUrl}/api/recommendations?userId=${userId}`);
                 setRecommendations(data);
             } catch (err) {
                 setError("Failed to load recommendations. Please check console for details.");

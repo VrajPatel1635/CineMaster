@@ -4,6 +4,8 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 
+const serverUrl = process.env.NEXT_PUBLIC_API_URL;
+
 // Create a context for authentication
 const AuthContext = createContext();
 
@@ -37,7 +39,7 @@ export const AuthProvider = ({ children }) => {
   // Login function
   const login = async (email, password) => {
     try {
-      const res = await axios.post('http://localhost:5000/api/login', { email, password });
+      const res = await axios.post(`${serverUrl}/api/login`, { email, password });
       const { user, token: receivedToken } = res.data; // Destructure token as receivedToken to avoid name conflict
 
       setUser(user);
@@ -55,7 +57,7 @@ export const AuthProvider = ({ children }) => {
   // Signup function
   const signup = async (email, password) => {
     try {
-      const res = await axios.post('http://localhost:5000/api/register', { email, password });
+      const res = await axios.post(`${serverUrl}/api/register`, { email, password });
       const { user, token: receivedToken } = res.data; // Destructure token as receivedToken
 
       setUser(user);

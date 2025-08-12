@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/solid";
 import styles from './profile.module.css';
 
-const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+const serverUrl = process.env.NEXT_PUBLIC_API_URL;
 
 export default function ProfilePage() {
   const { user, isAuthenticated, logout, authLoading, token, setUser } = useAuth();

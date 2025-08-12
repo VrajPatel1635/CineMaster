@@ -16,6 +16,8 @@ import MovieCardSkeleton from "./MovieCardSkeleton";
 
 gsap.registerPlugin(ScrollTrigger);
 
+const serverUrl = process.env.NEXT_PUBLIC_API_URL;
+
 export default function AIPicksSection() {
     const { isDarkMode } = useTheme();
     const MotionLink = motion(Link);
@@ -79,7 +81,7 @@ export default function AIPicksSection() {
         setLoading(true);
         setError(null);
         try {
-            const { data } = await axios.get(`http://localhost:5000${endpoint}`);
+            const { data } = await axios.get(`${serverUrl}${endpoint}`);
             setState(data);
         } catch (error) {
             console.error(`Error fetching movies from backend (${endpoint}):`, error);
@@ -94,7 +96,7 @@ export default function AIPicksSection() {
         setError(null);
         try {
             const queryString = new URLSearchParams(params).toString();
-            const { data } = await axios.get(`http://localhost:5000/api/trending-picks?${queryString}`);
+            const { data } = await axios.get(`${serverUrl}/api/trending-picks?${queryString}`);
             setState(data);
         } catch (error) {
             console.error(`Error fetching trending movies from backend:`, error);

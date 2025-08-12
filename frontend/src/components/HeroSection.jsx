@@ -9,7 +9,7 @@ import { motion, useMotionValue, useTransform } from 'framer-motion';
 import TrailerPlayer from '@/components/TrailerPlayer';
 import { useTheme } from '@/context/ThemeContext';
 
-const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+const serverUrl = process.env.NEXT_PUBLIC_API_URL;
 
 function extractYouTubeId(raw) {
   if (!raw) return null;

@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import styles from './watchlist.module.css';
 
-const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+const serverUrl = process.env.NEXT_PUBLIC_API_URL;
 
 const WatchlistPage = () => {
   const { userId, isAuthenticated, isLoading } = useUser();

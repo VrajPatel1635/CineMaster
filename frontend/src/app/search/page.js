@@ -23,7 +23,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 120, damping: 14 } },
 };
 
-const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+const serverUrl = process.env.NEXT_PUBLIC_API_URL;
 const PAGE_SIZE_FALLBACK = 24;
 
 function range(start, end) {
