@@ -15,11 +15,8 @@
   --tw-gradient-radial: radial-gradient(var(--tw-gradient-stops));
   --tw-gradient-conic: conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops));
 
-  /* ✅ NEW ADDITIONS */
   --color-glass-bg: rgba(255, 255, 255, 0.15);
-  /* glass effect for light */
   --color-border-glow: rgba(52, 152, 219, 0.6);
-  /* subtle neon border */
   --color-shadow-light: rgba(0, 0, 0, 0.1);
   --color-shadow-heavy: rgba(0, 0, 0, 0.25);
   --color-success: #2ecc71;
@@ -35,11 +32,8 @@ html.dark {
   --color-text-secondary: #E5E5CB;
   --color-accent: #58A6FF;
 
-  /* ✅ NEW ADDITIONS */
   --color-glass-bg: rgba(255, 255, 255, 0.05);
-  /* glass effect for dark */
   --color-border-glow: rgba(88, 166, 255, 0.6);
-  /* neon blue glow */
   --color-shadow-light: rgba(255, 255, 255, 0.08);
   --color-shadow-heavy: rgba(0, 0, 0, 0.5);
   --color-success: #2ecc71;

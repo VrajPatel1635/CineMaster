@@ -1,107 +1,215 @@
+// frontend/src/components/MovieCard.jsx
 'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Star } from 'lucide-react';
 import { FaTrash } from 'react-icons/fa';
-import { useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+
 import WatchlistSuccessPopup from './WatchlistSuccessPopup';
+import { useTheme } from '@/context/ThemeContext';
 
 const baseImageUrl = 'https://image.tmdb.org/t/p/w500';
+const MotionLink = motion(Link);
 
-const MovieCard = ({ movie, onRemove, isRemoving, showRemoveIcon }) => {
-    const [selectedTrailer, setSelectedTrailer] = useState(null);
-    const [showWatchlistPopup, setShowWatchlistPopup] = useState(false);
-    const [watchlistPopupMovie, setWatchlistPopupMovie] = useState(null);
 
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileHover={{ scale: 1.03, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
-            className="relative min-w-[160px] sm:min-w-[180px] md:min-w-[200px] max-w-[240px] mx-2 group cursor-pointer 
-                   rounded-2xl overflow-hidden border bg-white/80 dark:bg-zinc-900/40 backdrop-blur-lg 
-                   border-zinc-200 dark:border-zinc-800 shadow-md hover:shadow-xl transition-all duration-500"
+export default function MovieCard({ movie, onRemove, isRemoving, showRemoveIcon }) {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [showWatchlistPopup, setShowWatchlistPopup] = useState(false);
+  const [watchlistPopupMovie, setWatchlistPopupMovie] = useState(null);
+  const { theme } = useTheme();
+
+  const isDark = theme === 'dark';
+  const title = movie.title || movie.name || 'Untitled';
+  const mediaType = (movie.media_type || 'movie').toUpperCase();
+  const year = (movie.release_date || movie.first_air_date || '').slice(0, 4) || '—';
+  const rating = typeof movie.vote_average === 'number' ? Math.round(movie.vote_average * 10) / 10 : null;
+
+  const posterSrc = movie.poster_path ? `${baseImageUrl}${movie.poster_path}` : '/images/placeholder-poster.png';
+
+  // Theme-aware backgrounds
+  const cardBg = isDark
+    ? 'linear-gradient(135deg, #23272f 60%, #1a2233 100%)'
+    : 'linear-gradient(135deg, #f5f7fa 60%, #dbeafe 100%)';
+  const glassBg = isDark
+    ? 'linear-gradient(180deg, rgba(30,34,44,0.85), rgba(30,34,44,0.65) 85%, transparent)'
+    : 'linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.65) 85%, transparent)';
+  const borderCol = isDark
+    ? 'rgba(52,152,219,0.18)'
+    : 'rgba(52,152,219,0.28)';
+  const textPrimary = isDark ? '#fff' : '#1a2233';
+  const textSecondary = isDark ? '#cbd5e1' : '#334155';
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -3 }}
+      transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+      className="group relative w-full max-w-[260px] min-w-[170px] mx-2"
+      style={{
+        background: cardBg,
+        borderRadius: 20,
+        padding: 1,
+      }}
+    >
+      {/* Inner glass card */}
+      <div
+        className="relative rounded-[18px] overflow-hidden shadow-[0_10px_25px_var(--color-shadow-heavy,rgba(0,0,0,0.18))] backdrop-blur-xl transition-transform duration-300"
+        style={{
+          background: glassBg,
+          border: '1px solid',
+          borderColor: borderCol,
+        }}
+      >
+        {/* Remove icon */}
+        {showRemoveIcon && onRemove && (
+          <button
+            aria-label="Remove from watchlist"
+            className="absolute top-3 left-3 z-30 rounded-full p-2 text-white/90 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            style={{
+              background: 'linear-gradient(135deg, rgba(231,76,60,0.9), rgba(192,57,43,0.9))',
+              border: '1px solid rgba(255,255,255,0.25)',
+              boxShadow: '0 6px 18px rgba(0,0,0,0.25)',
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (!isRemoving) onRemove(movie.id || movie.movieId);
+            }}
+            disabled={isRemoving}
+          >
+            <FaTrash className={isRemoving ? 'animate-spin' : ''} />
+          </button>
+        )}
+
+        <MotionLink
+          href={`/movie/${movie.id}?media_type=${movie.media_type || 'movie'}`}
+          className="block"
+          whileHover={{ scale: 1.01 }}
+          transition={{ type: 'spring', stiffness: 350, damping: 20 }}
         >
-            {/* Remove from Watchlist Icon */}
-            {showRemoveIcon && onRemove && (
-                <button
-                    className="absolute top-2 left-2 z-30 bg-white/80 hover:bg-red-600 hover:text-white text-red-600 rounded-full p-2 shadow-md transition-colors duration-200"
-                    title="Remove from Watchlist"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        if (!isRemoving) onRemove(movie.id || movie.movieId);
-                    }}
-                    disabled={isRemoving}
-                >
-                    <FaTrash className={isRemoving ? 'animate-spin' : ''} />
-                </button>
+          <div className="relative">
+            {/* Poster with skeleton shimmer */}
+            <div className="relative h-[250px] sm:h-[280px] md:h-[300px] lg:h-[320px] w-full overflow-hidden">
+              <Image
+                src={posterSrc}
+                alt={title}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
+                className={`object-cover transition duration-700 ease-out will-change-transform ${
+                  imgLoaded ? 'scale-100 blur-0' : 'scale-[1.02] blur-[6px]'
+                }`}
+                onLoadingComplete={() => setImgLoaded(true)}
+                priority={false}
+              />
+
+              {!imgLoaded && (
+                <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-[rgba(255,255,255,0.08)] via-[rgba(255,255,255,0.04)] to-transparent" />
+              )}
+
+              {/* Subtle shine on hover */}
+              <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                <div className="absolute -inset-1 bg-[linear-gradient(120deg,rgba(255,255,255,0.15),rgba(255,255,255,0)_40%)] translate-x-[-120%] group-hover:translate-x-[120%] duration-700 ease-out skew-x-[-12deg]" />
+              </div>
+            </div>
+
+            {/* Gradient overlay for text */}
+            <div className={`absolute inset-0 rounded-[18px] opacity-0 group-hover:opacity-100 transition-opacity duration-400 ${isDark ? 'bg-gradient-to-t from-black/85 via-black/55 to-transparent' : 'bg-gradient-to-t from-white/90 via-white/60 to-transparent'}`} />
+
+            {/* Top-right rating chip */}
+            {rating !== null && (
+              <div
+                className="absolute top-3 right-3 z-30 px-2.5 py-1 rounded-full backdrop-blur-md text-white text-xs font-semibold shadow"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(0,0,0,0.55), rgba(0,0,0,0.35))',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                }}
+                aria-label={`Rating ${rating} out of 10`}
+              >
+                <span className="inline-flex items-center gap-1">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  {rating}
+                </span>
+              </div>
             )}
-            <Link href={`/movie/${movie.id}?media_type=${movie.media_type || 'movie'}`} passHref>
-                <div className="relative">
-                    {/* Poster */}
-                    <Image
-                        src={movie.poster_path ? `${baseImageUrl}${movie.poster_path}` : '/images/placeholder-poster.png'}
-                        alt={movie.title || movie.name}
-                        width={220}
-                        height={330}
-                        className="w-full h-[250px] sm:h-[280px] md:h-[300px] lg:h-[330px] object-cover rounded-2xl group-hover:scale-[1.02] group-hover:brightness-90 transition-transform duration-500"
-                        priority
-                    />
 
-                    {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent opacity-0 
-                                group-hover:opacity-100 transition-opacity duration-500 z-10 rounded-2xl" />
+            {/* Hover content */}
+            <div className="absolute inset-0 z-20 flex flex-col justify-end p-3 sm:p-4 opacity-0 group-hover:opacity-100 translate-y-3 group-hover:translate-y-0 transition-all duration-400">
+              <h3
+                className="text-[0.95rem] sm:text-base font-semibold leading-snug line-clamp-2 drop-shadow-lg"
+                style={{ color: textPrimary }}
+              >
+                {title}
+              </h3>
 
-                    {/* Movie Info */}
-                    <div className="absolute inset-0 flex flex-col justify-end items-center p-3 text-center opacity-0 group-hover:opacity-100 transition-all duration-500 z-20 translate-y-6 
-                    group-hover:translate-y-0">
-                        <h3 className="text-white text-sm sm:text-base font-semibold mb-2 line-clamp-2 drop-shadow-lg">
-                            {movie.title || movie.name}
-                        </h3>
-                        <p className="text-white text-xs sm:text-sm line-clamp-3 mb-3 opacity-80">
-                            {movie.overview || "No overview available."}
-                        </p>
-                        {movie.trailerUrl ? (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedTrailer(movie.trailerUrl);
-                                }}
-                                className="px-4 py-1.5 bg-gradient-to-r from-rose-500 to-fuchsia-600 
-                                       hover:from-pink-500 hover:to-violet-600 text-white text-xs font-semibold 
-                                       rounded-full shadow-md transition duration-300"
-                            >
-                                ▶ Watch Trailer
-                            </button>
-                        ) : (
-                            <p className="text-white text-xs italic">No Trailer</p>
-                        )}
-                    </div>
+              <div className="mt-1 mb-2 flex items-center gap-2">
+                <span
+                  className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full"
+                  style={{
+                    background: isDark
+                      ? 'linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04))'
+                      : 'linear-gradient(180deg, rgba(30,34,44,0.10), rgba(30,34,44,0.04))',
+                    border: isDark ? '1px solid rgba(255,255,255,0.18)' : '1px solid #cbd5e1',
+                    color: isDark ? '#fff' : '#1a2233',
+                  }}
+                >
+                  {mediaType}
+                </span>
+                <span
+                  className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full"
+                  style={{
+                    background: isDark
+                      ? 'linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04))'
+                      : 'linear-gradient(180deg, rgba(30,34,44,0.10), rgba(30,34,44,0.04))',
+                    border: isDark ? '1px solid rgba(255,255,255,0.18)' : '1px solid #cbd5e1',
+                    color: isDark ? '#fff' : '#1a2233',
+                  }}
+                >
+                  {year}
+                </span>
+              </div>
 
-                    {/* Rating Tooltip */}
-                    <div className="absolute top-2 right-2 bg-white dark:bg-zinc-800 text-xs px-2 py-1 rounded-full 
-                                shadow-sm opacity-0 group-hover:opacity-100 transition duration-300 z-30">
-                        {movie.vote_average && (
-                            <span className="flex items-center gap-1 text-yellow-500 font-bold">
-                                <Star className="w-4 h-4 fill-yellow-500" />
-                                {movie.vote_average.toFixed(1)}
-                            </span>
-                        )}
-                    </div>
-                </div>
-            </Link>
+              <p
+                className="text-[11px] sm:text-xs line-clamp-3"
+                style={{ color: isDark ? '#f1f5f9' : '#334155' }}
+              >
+                {movie.overview || 'No overview available.'}
+              </p>
+            </div>
+          </div>
+        </MotionLink>
 
-            {/* Optional Watchlist Success Popup */}
-            <WatchlistSuccessPopup
-                movie={watchlistPopupMovie}
-                show={showWatchlistPopup}
-                onClose={() => setShowWatchlistPopup(false)}
-            />
-        </motion.div>
-    );
-};
+        {/* Bottom info strip (always visible) */}
+        <div className="relative p-3 sm:p-3.5">
+          <h4
+            className="font-semibold text-sm line-clamp-1"
+            title={title}
+            style={{ color: textPrimary }}
+          >
+            {title}
+          </h4>
+          <div className="mt-1 flex items-center justify-between">
+            <span className="text-[11px]" style={{ color: textSecondary }}>
+              {year} · {mediaType}
+            </span>
+            {rating !== null && (
+              <span className="text-[11px] font-semibold" style={{ color: textSecondary }}>
+                {rating}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
-export default MovieCard;
+      {/* Optional Watchlist Success Popup (kept for your flow) */}
+      <WatchlistSuccessPopup
+        movie={watchlistPopupMovie}
+        show={showWatchlistPopup}
+        onClose={() => setShowWatchlistPopup(false)}
+      />
+    </motion.article>
+  );
+}

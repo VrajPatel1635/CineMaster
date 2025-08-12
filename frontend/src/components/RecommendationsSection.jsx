@@ -96,18 +96,30 @@ export default function RecommendationsSection({ userId }) {
         );
     }
     return (
-        <section ref={sectionRef} className="pt-16 pb-10">
-            <div className="px-6 space-y-4">
-                <h2 className="text-4xl font-bold text-[var(--color-accent)]">Your Personalized Picks</h2>
-                <p className={`text-lg italic ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+        <section
+            ref={sectionRef}
+            className="pt-12 pb-8 sm:pt-16 sm:pb-10"
+        >
+            <div className="px-4 sm:px-6 space-y-3 sm:space-y-4">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[var(--color-accent)]">
+                    Your Personalized Picks
+                </h2>
+                <p
+                    className={`text-base sm:text-lg italic ${isDarkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                >
                     Based on what you've watched.
                 </p>
+
                 <div
-                    className="flex overflow-x-auto space-x-4 pb-4 no-scrollbar snap-x snap-mandatory"
-                    style={{ WebkitOverflowScrolling: 'touch' }}
+                    className="flex overflow-x-auto space-x-3 sm:space-x-4 pb-3 sm:pb-4 no-scrollbar snap-x snap-mandatory"
+                    style={{ WebkitOverflowScrolling: "touch", scrollBehavior: "smooth" }}
                 >
                     {recommendations.map((movie) => (
-                        <div className="snap-start min-w-[150px] md:min-w-[200px]" key={movie.id}> {/* Added min-width */}
+                        <div
+                            key={movie.id}
+                            className="snap-center flex-shrink-0 min-w-[130px] xs:min-w-[150px] sm:min-w-[180px] md:min-w-[200px] lg:min-w-[220px]"
+                        >
                             <MovieCard movie={movie} />
                         </div>
                     ))}

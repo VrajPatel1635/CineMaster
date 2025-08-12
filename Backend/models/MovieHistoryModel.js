@@ -3,10 +3,10 @@ import mongoose from 'mongoose';
 
 const movieHistorySchema = new mongoose.Schema({
     userId: {
-        type: mongoose.Schema.Types.ObjectId, // CRITICAL CHANGE: From String to ObjectId
-        ref: 'User', // References the 'User' model
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User', 
         required: true,
-        unique: true, // Ensures one history document per user
+        unique: true,
     },
     watchedMovies: [
         {
@@ -16,7 +16,7 @@ const movieHistorySchema = new mongoose.Schema({
             },
             title: {
                 type: String,
-                required: false, // <--- CHANGED THIS FROM 'true' TO 'false'
+                required: false, 
             },
             genreIds: {
                 type: [Number],

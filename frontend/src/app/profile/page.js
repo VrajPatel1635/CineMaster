@@ -1,336 +1,437 @@
 // frontend/src/app/profile/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { FaSpinner, FaEdit, FaCheck, FaTimes, FaTrashAlt } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/solid";
+import styles from './profile.module.css';
 
+const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
 
 export default function ProfilePage() {
-    const { user, isAuthenticated, logout, authLoading, token } = useAuth();
-    const [history, setHistory] = useState([]);
-    const [historyLoading, setHistoryLoading] = useState(true);
-    const [clearingHistory, setClearingHistory] = useState(false);
-    const [showConfirmClearModal, setShowConfirmClearModal] = useState(false);
-    const [editingName, setEditingName] = useState(false);
-    const [nameInput, setNameInput] = useState(user?.name || user?.email?.split('@')[0] || '');
-    const [savingName, setSavingName] = useState(false);
+  const { user, isAuthenticated, logout, authLoading, token, setUser } = useAuth();
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [clearingHistory, setClearingHistory] = useState(false);
+  const [showConfirmClearModal, setShowConfirmClearModal] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(user?.name || user?.email?.split('@')[0] || '');
+  const [savingName, setSavingName] = useState(false);
 
-    const getAuthConfig = () => {
-        return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-    };
+  // Shine sweep reverse toggles
+  const [revLogout, setRevLogout] = useState(false);
+  const [revClear, setRevClear] = useState(false);
+  const [revSave, setRevSave] = useState(false);
 
-    // The first useEffect should always be called.
-    useEffect(() => {
-        console.log("isAuthenticated:", isAuthenticated);
-        console.log("user:", user);
-        console.log("token:", token);
-        if (authLoading) {
-            return;
-        }
+  const [selectedHistory, setSelectedHistory] = useState([]);
+  const [deletingSelected, setDeletingSelected] = useState(false);
+  const selectAllRef = useRef();
 
-        // The conditional logic is now inside the hook.
-        if (isAuthenticated && user && user._id && token) {
-            const fetchHistory = async () => {
-                setHistoryLoading(true);
-                try {
-                    console.log(`[FRONTEND] Fetching history for user: ${user._id}`);
-                    const response = await axios.get(
-                        `http://localhost:5000/api/history/${user._id}`,
-                        getAuthConfig()
-                    );
-                    setHistory(response.data);
-                } catch (error) {
-                    console.error('[FRONTEND] Failed to fetch user history:', error);
-                    if (axios.isAxiosError(error) && error.response) {
-                        if (error.response.status === 401 || error.response.status === 403) {
-                            toast.error("Authentication required to load history. Please log in.", { duration: 5000 });
-                            setHistory([]);
-                        } else {
-                            toast.error("Failed to load history. Please try again.", { duration: 5000 });
-                        }
-                    } else {
-                        toast.error("Network error. Could not connect to the server.", { duration: 5000 });
-                    }
-                    setHistory([]);
-                } finally {
-                    setHistoryLoading(false);
-                }
-            };
-            fetchHistory();
-        } else if (!isAuthenticated) {
-            setHistoryLoading(false);
-            setHistory([]);
-        }
-    }, [isAuthenticated, user, authLoading, token]);
+  const getAuthConfig = () => (token ? { headers: { Authorization: `Bearer ${token}` } } : {});
 
-    // This second useEffect is fine because it's at the top level.
-    useEffect(() => {
-        setNameInput(user?.name || user?.email?.split('@')[0] || '');
-    }, [user]);
+  useEffect(() => {
+    if (authLoading) return;
 
-    // ... rest of the component code (handleClearHistory, handleSaveName, etc.)
-    // ... the return statement
-
-    const handleClearHistory = async () => {
-        if (!user || !user._id || !token) {
-            console.warn("User ID or token not available for clearing history.");
-            toast.error("Please log in to clear history.");
-            return;
-        }
-        setShowConfirmClearModal(true);
-    };
-
-    const confirmClearAction = async () => {
-        setShowConfirmClearModal(false);
-        setClearingHistory(true);
-        const loadingToastId = toast.loading("Clearing history...");
+    if (isAuthenticated && user?._id && token) {
+      const fetchHistory = async () => {
+        setHistoryLoading(true);
         try {
-            await axios.delete(
-                `http://localhost:5000/api/history/${user._id}`,
-                getAuthConfig()
-            );
-            setHistory([]);
-            toast.success("Viewing history cleared successfully!", { id: loadingToastId });
+          const response = await axios.get(`${serverUrl}/api/history/${user._id}`, getAuthConfig());
+          setHistory(response.data);
         } catch (error) {
-            console.error('[FRONTEND] Failed to clear user history:', error);
-            if (axios.isAxiosError(error) && error.response) {
-                if (error.response.status === 401 || error.response.status === 403) {
-                    toast.error("Authentication required to clear history.", { id: loadingToastId, duration: 5000 });
-                } else {
-                    toast.error("Failed to clear history. Please try again.", { id: loadingToastId, duration: 5000 });
-                }
+          console.error('[FRONTEND] Failed to fetch user history:', error);
+          if (axios.isAxiosError(error) && error.response) {
+            if ([401, 403].includes(error.response.status)) {
+              toast.error("Authentication required to load history. Please log in.", { duration: 5000 });
+              setHistory([]);
             } else {
-                toast.error("Network error. Could not connect to the server.", { id: loadingToastId, duration: 5000 });
+              toast.error("Failed to load history. Please try again.", { duration: 5000 });
             }
+          } else {
+            toast.error("Network error. Could not connect to the server.", { duration: 5000 });
+          }
+          setHistory([]);
         } finally {
-            setClearingHistory(false);
+          setHistoryLoading(false);
         }
-    };
-
-    const cancelClearAction = () => {
-        setShowConfirmClearModal(false);
-    };
-
-    if (authLoading) {
-        return <div className="h-screen flex items-center justify-center text-xl text-[var(--color-text-primary)]">Loading profile...</div>;
+      };
+      fetchHistory();
+    } else {
+      setHistoryLoading(false);
+      setHistory([]);
     }
+  }, [isAuthenticated, user, authLoading, token]);
 
-    if (!isAuthenticated) {
-        return (
-            <div className="h-screen flex flex-col items-center justify-center text-xl text-[var(--color-text-secondary)]">
-                <p className="font-bold text-2xl mb-4">You are not logged in.</p>
-                <p>Please log in to view your profile and history.</p>
-            </div>
-        );
+  useEffect(() => {
+    setNameInput(user?.name || user?.email?.split('@')[0] || '');
+  }, [user]);
+
+  const handleClearHistory = async () => {
+    if (!user?._id || !token) {
+      toast.error("Please log in to clear history.");
+      return;
     }
+    setShowConfirmClearModal(true);
+  };
 
-    const userEmail = user?.email || 'No email available';
-
-    async function handleSaveName() {
-        setSavingName(true);
-        try {
-            const res = await axios.patch('http://localhost:5000/api/user/name', { name: nameInput }, getAuthConfig());
-            toast.success('Name updated!');
-            // Update user context if possible
-            if (res.data && res.data.user) {
-                if (typeof window !== 'undefined') {
-                    // Update localStorage if used for user
-                    const storedUser = window.localStorage.getItem('user');
-                    if (storedUser) {
-                        const updatedUser = { ...JSON.parse(storedUser), name: res.data.user.name };
-                        window.localStorage.setItem('user', JSON.stringify(updatedUser));
-                    }
-                }
-                // If useAuth provides a setUser, call it
-                if (typeof setUser === 'function') {
-                    setUser((prev) => ({ ...prev, name: res.data.user.name }));
-                }
-            }
-            setEditingName(false);
-        } catch (err) {
-            toast.error('Failed to update name');
-        } finally {
-            setSavingName(false);
+  const confirmClearAction = async () => {
+    setShowConfirmClearModal(false);
+    setClearingHistory(true);
+    const loadingToastId = toast.loading("Clearing history...");
+    try {
+      await axios.delete(`${serverUrl}/api/history/${user._id}`, getAuthConfig());
+      setHistory([]);
+      toast.success("Viewing history cleared successfully!", { id: loadingToastId });
+    } catch (error) {
+      console.error('[FRONTEND] Failed to clear user history:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        if ([401, 403].includes(error.response.status)) {
+          toast.error("Authentication required to clear history.", { id: loadingToastId, duration: 5000 });
+        } else {
+          toast.error("Failed to clear history. Please try again.", { id: loadingToastId, duration: 5000 });
         }
+      } else {
+        toast.error("Network error. Could not connect to the server.", { id: loadingToastId, duration: 5000 });
+      }
+    } finally {
+      setClearingHistory(false);
     }
+  };
 
-    function handleCancelEdit() {
-        setEditingName(false);
-        setNameInput(user?.name || userEmail.split('@')[0] || '');
+  const cancelClearAction = () => setShowConfirmClearModal(false);
+
+  async function handleSaveName() {
+    if (!nameInput.trim()) return;
+    setSavingName(true);
+    try {
+      const res = await axios.patch(`${serverUrl}/api/user/name`, { name: nameInput.trim() }, getAuthConfig());
+      toast.success('Name updated!');
+      const newName = res?.data?.user?.name || nameInput.trim();
+
+      // Update user in context (if available)
+      if (setUser) setUser(prev => ({ ...prev, name: newName }));
+
+      // Persist to localStorage (fallback)
+      if (typeof window !== 'undefined') {
+        const storedUser = window.localStorage.getItem('user');
+        if (storedUser) {
+          const updated = { ...JSON.parse(storedUser), name: newName };
+          window.localStorage.setItem('user', JSON.stringify(updated));
+        }
+      }
+
+      setEditingName(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update name');
+    } finally {
+      setSavingName(false);
     }
+  }
 
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="pt-20 p-8 md:p-16 min-h-screen bg-[var(--color-background-primary)] text-[var(--color-text-primary)]"
-        >
-            <div className="max-w-4xl mx-auto pt-10">
-                <div className="flex flex-col md:flex-row items-center justify-between border-b pb-8 mb-8 border-[var(--color-border)]">
-                    <div className="flex flex-col items-center md:items-start text-center md:text-left">
-                        <div className="flex items-center gap-2 mb-2">
-                            {editingName ? (
-                                <>
-                                    <input
-                                        type="text"
-                                        value={nameInput}
-                                        onChange={e => setNameInput(e.target.value)}
-                                        className="text-4xl md:text-5xl font-extrabold bg-transparent border-b-2 border-[var(--color-accent)] focus:outline-none px-2 py-1 w-48 md:w-64"
-                                        disabled={savingName}
-                                    />
-                                    <button
-                                        onClick={handleSaveName}
-                                        className="ml-2 text-green-600 hover:text-green-800"
-                                        disabled={savingName}
-                                    >
-                                        <FaCheck />
-                                    </button>
-                                    <button
-                                        onClick={handleCancelEdit}
-                                        className="ml-1 text-red-600 hover:text-red-800"
-                                        disabled={savingName}
-                                    >
-                                        <FaTimes />
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <h1 className="text-4xl md:text-5xl font-extrabold">{user?.name || userEmail.split('@')[0]}</h1>
-                                    <button
-                                        onClick={() => setEditingName(true)}
-                                        className="ml-2 text-[var(--color-accent)] hover:text-[var(--color-accent-dark)] cursor-pointer"
-                                        title="Edit Name"
-                                    >
-                                        <FaEdit />
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                        <p className="text-lg text-[var(--color-text-secondary)]">{userEmail}</p>
-                    </div>
-                    <motion.button
-                        onClick={logout}
-                        className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-semibold transition-all duration-300 bg-gray-800 text-white shadow-lg hover:bg-red-600 hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 cursor-pointer"
-                        whileHover={{ scale: 1.05, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05), 0 0 20px 5px rgba(239, 68, 68, 0.4)" }}
-                        whileTap={{ scale: 0.95 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                    >
-                        <ArrowRightOnRectangleIcon className="w-5 h-5" />
-                        Log Out
-                    </motion.button>
-                </div>
-
-                <div className="space-y-8">
-                    <h2 className="text-3xl font-bold border-b pb-4 border-[var(--color-border)] flex justify-between items-center">
-                        Your Viewing History
-                        <motion.button
-                            onClick={handleClearHistory}
-                            className="ml-4 px-6 py-3 bg-red-600 text-white font-semibold rounded-full shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer active:bg-red-700"
-                            whileHover={{
-                                scale: 1.05,
-                                boxShadow: "0 10px 20px rgba(239, 68, 68, 0.6)",
-                                y: -2
-                            }}
-                            whileTap={{
-                                scale: 0.95,
-                                y: 0
-                            }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 400,
-                                damping: 10
-                            }}
-                            disabled={historyLoading || clearingHistory || history.length === 0}
-                        >
-                            {clearingHistory ? (
-                                <FaSpinner className="animate-spin" />
-                            ) : (
-                                <>
-                                    <FaTrashAlt />
-                                    <span>Clear History</span>
-                                </>
-                            )}
-                        </motion.button>
-                    </h2>
-
-                    {historyLoading ? (
-                        <div className="text-center text-[var(--color-text-secondary)] flex items-center justify-center py-10">
-                            <FaSpinner className="animate-spin text-2xl mr-2" /> Loading history...
-                        </div>
-                    ) : history.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {history.map((movie) => (
-                                <Link href={`/movie/${movie.id}?media_type=movie`} key={movie.id} passHref>
-                                    <div className="bg-[var(--color-background-secondary)] rounded-xl overflow-hidden shadow-lg transform transition-transform hover:scale-105 group cursor-pointer">
-                                        <div className="relative w-full h-64">
-                                            <Image
-                                                src={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '/images/placeholder-poster.png'}
-                                                alt={movie.title}
-                                                layout="fill"
-                                                objectFit="cover"
-                                                className="transition-transform duration-300 group-hover:scale-110"
-                                                onError={(e) => { e.target.onerror = null; e.target.src = '/images/placeholder-poster.png'; }}
-                                            />
-                                        </div>
-                                        <div className="p-4">
-                                            <h3 className="text-xl font-bold truncate">{movie.title}</h3>
-                                            <p className="text-sm text-[var(--color-text-secondary)]">
-                                                Watched: {new Date(movie.viewedAt).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center text-[var(--color-text-secondary)] py-10">
-                            <p>You haven't viewed any movies yet. Start Browse to build your history!</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {showConfirmClearModal && (
-                <div className="fixed inset-0 bg-transparent backdrop-blur-lg bg-opacity-70 flex items-center justify-center z-50 p-4">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        className="bg-[var(--color-background-secondary)] rounded-lg p-6 shadow-xl max-w-sm w-full text-center border border-[var(--color-border)]"
-                    >
-                        <h3 className="text-xl font-bold mb-4 text-[var(--color-accent)]">Confirm Clear History</h3>
-                        <p className="text-[var(--color-text-primary)] mb-6">
-                            Are you sure you want to clear your entire viewing history? This action cannot be undone.
-                        </p>
-                        <div className="flex justify-center space-x-4">
-                            <motion.button
-                                onClick={confirmClearAction}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="px-5 py-2 bg-red-600 text-white rounded-md font-semibold hover:bg-red-700 transition-colors"
-                            >
-                                Yes, Clear
-                            </motion.button>
-                            <motion.button
-                                onClick={cancelClearAction}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="px-5 py-2 bg-gray-600 text-white rounded-md font-semibold hover:bg-gray-700 transition-colors"
-                            >
-                                Cancel
-                            </motion.button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-        </motion.div>
+  const handleSelectHistory = (movieId) => {
+    setSelectedHistory((prev) =>
+      prev.includes(movieId) ? prev.filter((id) => id !== movieId) : [...prev, movieId]
     );
+  };
+  const handleSelectAll = () => {
+    if (selectedHistory.length === history.length) {
+      setSelectedHistory([]);
+    } else {
+      setSelectedHistory(history.map((m) => m.id));
+    }
+  };
+  const handleDeleteSelected = async () => {
+    if (!user?._id || !token || selectedHistory.length === 0) return;
+    setDeletingSelected(true);
+    const loadingToastId = toast.loading('Deleting selected history...');
+    try {
+      const res = await axios.post(
+        `${serverUrl}/api/history/delete-selected`,
+        { userId: user._id, movieIds: selectedHistory },
+        getAuthConfig()
+      );
+      setHistory(res.data.history || []);
+      setSelectedHistory([]);
+      toast.success('Selected history deleted!', { id: loadingToastId });
+    } catch (err) {
+      toast.error('Failed to delete selected history.', { id: loadingToastId });
+    } finally {
+      setDeletingSelected(false);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center text-xl text-[var(--color-text-primary)]">
+        Loading profile...
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className={`${styles.page} h-screen flex flex-col items-center justify-center text-center`}>
+        <h2 className="text-2xl md:text-3xl font-extrabold mb-2">You are not logged in.</h2>
+        <p className="text-[var(--color-text-secondary)]">Please log in to view your profile and history.</p>
+      </div>
+    );
+  }
+
+  const userEmail = user?.email || 'No email available';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.45 }}
+      className={`${styles.page} pt-24 pb-16`}
+    >
+      <div className={`${styles.container} max-w-5xl mx-auto px-4 sm:px-6`}>
+        {/* Hero card */}
+        <motion.section
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className={styles.hero}
+        >
+          {/* Avatar */}
+          <div className={styles.avatarBlock}>
+            <div className={styles.avatarRing}>
+              <div className={styles.avatarInner}>
+                {user?.avatarUrl ? (
+                  <Image src={user.avatarUrl} alt="avatar" width={100} height={100} className={styles.avatarImg} />
+                ) : (
+                  <div className={styles.avatarFallback}>
+                    {(user?.name || userEmail)?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className={styles.stats}>
+              <div className={styles.statChip}>
+                <span className={styles.statLabel}>Watched</span>
+                <strong className={styles.statValue}>{history?.length || 0}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Info + actions */}
+          <div className={styles.heroContent}>
+            <div className={styles.nameRow}>
+              {editingName ? (
+                <div className={styles.editRow}>
+                  <input
+                    type="text"
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    disabled={savingName}
+                    className={styles.nameInput}
+                    placeholder="Your name"
+                  />
+                  <button
+                    onClick={handleSaveName}
+                    disabled={savingName || !nameInput.trim()}
+                    className={`${styles.btn} ${styles.primary} ${revSave ? styles.reverse : ''}`}
+                    onMouseLeave={() => setRevSave(r => !r)}
+                    aria-label="Save name"
+                  >
+                    <span className={styles.shine} />
+                    {savingName ? <FaSpinner className="animate-spin" /> : <FaCheck />}
+                    <span>Save</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingName(false);
+                      setNameInput(user?.name || userEmail.split('@')[0] || '');
+                    }}
+                    className={`${styles.btn} ${styles.ghost}`}
+                    aria-label="Cancel edit"
+                  >
+                    <FaTimes />
+                    <span>Cancel</span>
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.titleWrap}>
+                  <h1 className={styles.title}>{user?.name || userEmail.split('@')[0]}</h1>
+                  <button
+                    onClick={() => setEditingName(true)}
+                    className={styles.editBtn}
+                    title="Edit Name"
+                    aria-label="Edit Name"
+                  >
+                    <FaEdit />
+                  </button>
+                </div>
+              )}
+              <p className={styles.email}>{userEmail}</p>
+            </div>
+
+            <div className={styles.heroActions}>
+              <button
+                onClick={handleClearHistory}
+                disabled={historyLoading || clearingHistory || (history?.length || 0) === 0}
+                className={`${styles.btn} ${styles.danger} ${revClear ? styles.reverse : ''}`}
+                onMouseLeave={() => setRevClear(r => !r)}
+              >
+                <span className={styles.shine} />
+                {clearingHistory ? <FaSpinner className="animate-spin" /> : <FaTrashAlt />}
+                <span>{clearingHistory ? 'Clearing...' : 'Clear History'}</span>
+              </button>
+
+              <button
+                onClick={logout}
+                className={`${styles.btn} ${styles.secondary} ${revLogout ? styles.reverse : ''}`}
+                onMouseLeave={() => setRevLogout(r => !r)}
+              >
+                <span className={styles.shine} />
+                <ArrowRightOnRectangleIcon className={styles.icon} />
+                <span>Log Out</span>
+              </button>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* History */}
+        <section className={styles.historySection}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Your Viewing History</h2>
+            {history.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <input
+                  type="checkbox"
+                  ref={selectAllRef}
+                  checked={selectedHistory.length === history.length && history.length > 0}
+                  onChange={handleSelectAll}
+                  aria-label="Select all history"
+                  style={{ width: 18, height: 18 }}
+                />
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={selectedHistory.length === 0 || deletingSelected}
+                  className={`${styles.btn} ${styles.danger}`}
+                  style={{ minWidth: 120 }}
+                >
+                  {deletingSelected ? 'Deleting...' : 'Delete Selected'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {historyLoading ? (
+            <div className={styles.grid}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className={styles.cardSkeleton}>
+                  <div className={styles.posterSkeleton} />
+                  <div className={styles.line} />
+                  <div className={styles.lineSm} />
+                </div>
+              ))}
+            </div>
+          ) : history.length > 0 ? (
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              className={styles.grid}
+            >
+              {history.map((movie, idx) => (
+                <motion.div
+                  key={movie.id + '-' + idx}
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: Math.min(idx * 0.03, 0.3) }}
+                  className={styles.card}
+                >
+                  <div className={styles.selectBox}
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()} >
+                    <input type="checkbox" className={styles.checkbox} checked={selectedHistory.includes(movie.id)} onChange={() => handleSelectHistory(movie.id)} aria-label={`Select ${movie.title}`} /> </div>
+                  <Link href={`/movie/${movie.id}?media_type=movie`} className="block">
+                    <div className={styles.posterWrap}>
+                      <Image
+                        src={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '/images/placeholder-poster.png'}
+                        alt={movie.title}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
+                        className={styles.posterImg}
+                        priority={false}
+                      />
+                      <div className={styles.posterOverlay} />
+                    </div>
+                    <div className={styles.cardBody}>
+                      <h3 className={styles.cardTitle} title={movie.title}>{movie.title}</h3>
+                      <p className={styles.cardMeta}>
+                        Watched: {movie.viewedAt ? new Date(movie.viewedAt).toLocaleDateString() : '—'}
+                      </p>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <div className={styles.emptyState}>
+              <p>You haven&apos;t viewed any movies yet. Start browsing to build your history!</p>
+              <Link href="/" className={`${styles.btn} ${styles.primary}`}>
+                <span className={styles.shine} />
+                Discover Now
+              </Link>
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* Confirm Clear Modal */}
+      <AnimatePresence>
+        {showConfirmClearModal && (
+          <motion.div
+            className={styles.modalOverlay}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowConfirmClearModal(false)}
+          >
+            <motion.div
+              className={styles.modal}
+              initial={{ scale: 0.92, y: 10, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.96, y: 6, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 360, damping: 26 }}
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="confirm-title"
+            >
+              <h3 id="confirm-title" className={styles.modalTitle}>Confirm Clear History</h3>
+              <p className={styles.modalText}>
+                Are you sure you want to clear your entire viewing history? This action cannot be undone.
+              </p>
+              <div className={styles.modalActions}>
+                <button
+                  onClick={confirmClearAction}
+                  className={`${styles.btn} ${styles.danger}`}
+                >
+                  <span className={styles.shine} />
+                  Yes, Clear
+                </button>
+                <button
+                  onClick={cancelClearAction}
+                  className={`${styles.btn} ${styles.ghost}`}
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
 }

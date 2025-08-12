@@ -1,0 +1,275 @@
+/* frontend/src/app/search/search.module.css */
+
+/* Page background with subtle premium glow */
+.page {
+  --mx: 50%;
+  --my: 50%;
+  min-height: 100dvh;
+  background:
+    radial-gradient(1200px 800px at 20% 10%, color-mix(in srgb, var(--color-accent,#3498DB) 8%, transparent), transparent 60%),
+    radial-gradient(1000px 700px at 80% 85%, color-mix(in srgb, var(--color-text-secondary,#5C7C99) 7%, transparent), transparent 65%),
+    linear-gradient(180deg, var(--color-background-primary,#FEFCF3) 0%, var(--color-background-secondary,#F5EBE0) 60%, var(--color-background-primary,#FEFCF3) 100%);
+  color: var(--color-text-primary,#DBA39A);
+  padding-top: calc(64px + 1rem);
+}
+
+/* Hero header */
+.hero {
+  position: relative;
+  max-width: 1100px;
+  margin: 0 auto 18px;
+  padding: 18px 16px;
+}
+.heroInner {
+  position: relative;
+  z-index: 1;
+  border-radius: 18px;
+  padding: clamp(16px, 2.8vw, 24px);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--color-glass-bg,rgba(255,255,255,0.15)) 100%, transparent),
+      color-mix(in srgb, var(--color-glass-bg,rgba(255,255,255,0.15)) 85%, transparent));
+  backdrop-filter: blur(14px) saturate(120%);
+  border: 1px solid color-mix(in srgb, var(--color-border-glow,rgba(52,152,219,0.6)) 55%, transparent);
+  box-shadow:
+    0 22px 48px var(--color-shadow-heavy, rgba(0,0,0,0.25)),
+    inset 0 0 0 1px var(--color-shadow-light, rgba(0,0,0,0.1));
+}
+.heroGlow {
+  position: absolute;
+  inset: 0;
+  filter: blur(24px);
+  opacity: 0.25;
+  border-radius: 24px;
+  background:
+    radial-gradient(40% 50% at 20% 10%, color-mix(in srgb, var(--color-accent,#3498DB) 20%, transparent), transparent),
+    radial-gradient(45% 55% at 80% 90%, color-mix(in srgb, var(--color-text-secondary,#5C7C99) 18%, transparent), transparent);
+}
+
+.title {
+  font-weight: 900;
+  font-size: clamp(1.5rem, 4vw, 2.4rem);
+  color: var(--color-text-secondary,#5C7C99);
+  margin: 0 0 8px;
+  line-height: 1.15;
+}
+.titleAccent {
+  margin-left: 8px;
+  color: var(--color-accent,#3498DB);
+}
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.metaChip, .metaChipError {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary,#5C7C99);
+  background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.08));
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.metaChipError { background: color-mix(in srgb, var(--color-error,#e74c3c) 22%, transparent); }
+
+/* Main content */
+.content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 6px 16px 26px;
+}
+
+/* Grid of cards */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 16px;
+}
+@media (min-width: 640px) { .grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (min-width: 1024px) { .grid { grid-template-columns: repeat(5, minmax(0,1fr)); } }
+@media (min-width: 1280px) { .grid { grid-template-columns: repeat(6, minmax(0,1fr)); } }
+
+/* States */
+.errorBox, .emptyBox {
+  text-align: center;
+  padding: 30px 10px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--color-text-secondary,#5C7C99) 85%, transparent);
+}
+
+/* Pagination (premium shine buttons) */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+/* --- Enhanced Pagination Layout --- */
+.paginationWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+/* Progress bar */
+.progressTrack {
+  width: min(820px, 92%);
+  height: 8px;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-text-secondary,#5C7C99) 8%, transparent), transparent);
+  border: 1px solid color-mix(in srgb, var(--color-text-secondary,#5C7C99) 24%, transparent);
+  overflow: hidden;
+  box-shadow: inset 0 0 10px color-mix(in srgb, var(--color-text-secondary,#5C7C99) 18%, transparent);
+}
+.progressBar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent,#3498DB), color-mix(in srgb, var(--color-accent,#3498DB) 60%, var(--color-text-secondary,#5C7C99) 40%));
+  box-shadow:
+    0 4px 16px color-mix(in srgb, var(--color-accent,#3498DB) 25%, transparent),
+    inset 0 0 6px rgba(255,255,255,0.35);
+}
+
+/* Row with buttons and numbers */
+.pageTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Numbers group */
+.pageGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Ellipsis */
+.ellipsis {
+  padding: 8px 6px;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--color-text-secondary,#5C7C99) 90%, transparent);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Info + jump row */
+.pageInfoRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pageInfoChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: #fff;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.08)) padding-box,
+    linear-gradient(135deg, var(--color-accent,#3498DB), color-mix(in srgb, var(--color-accent,#3498DB) 50%, var(--color-text-secondary,#5C7C99) 50%)) border-box;
+  border: 1px solid transparent;
+}
+
+/* Jump popover */
+.jumpToggle {
+  font-weight: 800;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-text-secondary,#5C7C99) 25%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-text-secondary,#5C7C99) 10%, transparent), transparent);
+  color: var(--color-text-secondary,#5C7C99);
+  cursor: pointer;
+  transition: transform 0.18s ease, filter 0.18s ease, opacity 0.2s ease;
+}
+.jumpToggle:hover { transform: translateY(-1px); filter: saturate(112%); }
+
+.jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.jumpInput {
+  width: 84px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-accent,#3498DB) 40%, transparent);
+  background: color-mix(in srgb, var(--color-background-primary,#FEFCF3) 82%, transparent);
+  color: var(--color-text-secondary,#5C7C99);
+  font-weight: 700;
+  outline: none;
+}
+.jumpInput:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent,#3498DB) 55%, transparent);
+}
+
+@keyframes shineForward {
+  0% { transform: translateX(-140%) skewX(-15deg); opacity: 0; }
+  10% { opacity: 0.45; }
+  50% { opacity: 0.25; }
+  100% { transform: translateX(180%) skewX(-15deg); opacity: 0; }
+}
+
+.pageBtn, .pageNumber {
+  position: relative;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  overflow: hidden;
+  color: #2d2d2d;
+  transition: transform 0.18s ease, filter 0.18s ease, opacity 0.2s ease;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-text-secondary,#5C7C99) 10%, transparent), transparent) padding-box,
+    linear-gradient(135deg, var(--color-text-secondary,#5C7C99), color-mix(in srgb, var(--color-text-secondary,#5C7C99) 60%, var(--color-accent,#3498DB) 40%)) border-box;
+}
+.pageBtn:hover, .pageNumber:hover { transform: translateY(-1px); filter: saturate(112%); }
+.pageBtn:active, .pageNumber:active { transform: translateY(0); }
+
+.pageBtn::after, .pageNumber::after {
+  content: '';
+  position: absolute; top: 0; left: -120%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+  transform: skewX(-15deg);
+}
+.pageBtn:hover::after, .pageNumber:hover::after { animation: shineForward 820ms ease forwards; }
+
+.pageNumber {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent,#3498DB) 10%, transparent), transparent) padding-box,
+    linear-gradient(135deg, var(--color-accent,#3498DB), var(--color-accent-dark,hsl(190,80%,30%))) border-box;
+}
+.current {
+  opacity: 0.95;
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--color-accent,#3498DB) 22%, transparent);
+  cursor: default;
+}
+.disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Motion reduction */
+@media (prefers-reduced-motion: reduce) {
+  .pageBtn:hover::after, .pageNumber:hover::after { animation: none !important; }
+}

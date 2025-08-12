@@ -96,42 +96,310 @@ app.get('/', (req, res) => {
     res.send('TMDb Proxy Server is running!');
 });
 
-app.get("/api/search", async (req, res) => {
-    const query = req.query.query;
+// Genre cache per language
+const GENRE_CACHE = new Map(); // key: lang -> { movieIds:Set, tvIds:Set, movieByName:Map, tvByName:Map, exp:number }
+const GENRE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
-    if (!query) {
-        return res.status(400).json({ error: "Search query is required." });
+function normName(s = '') {
+  return s.toLowerCase().replace(/&/g, 'and').replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+async function fetchGenreData(lang = 'en-US') {
+  const now = Date.now();
+  const cached = GENRE_CACHE.get(lang);
+  if (cached && cached.exp > now) return cached;
+
+  const movieUrl = `https://api.themoviedb.org/3/genre/movie/list?api_key=${TMDB_API_KEY}&language=${encodeURIComponent(lang)}`;
+  const tvUrl    = `https://api.themoviedb.org/3/genre/tv/list?api_key=${TMDB_API_KEY}&language=${encodeURIComponent(lang)}`;
+
+  const [mRes, tRes] = await Promise.all([fetch(movieUrl), fetch(tvUrl)]);
+  const mJson = mRes.ok ? await mRes.json() : { genres: [] };
+  const tJson = tRes.ok ? await tRes.json() : { genres: [] };
+
+  const movieIds = new Set(mJson.genres.map(g => g.id));
+  const tvIds    = new Set(tJson.genres.map(g => g.id));
+
+  const movieByName = new Map();
+  mJson.genres.forEach(g => movieByName.set(normName(g.name), g.id));
+  // helpful synonyms
+  movieByName.set('sci fi', movieByName.get('science fiction') ?? 878);
+
+  const tvByName = new Map();
+  tJson.genres.forEach(g => tvByName.set(normName(g.name), g.id));
+  // helpful synonyms
+  tvByName.set('sci fi', tvByName.get('sci fi and fantasy') ?? tvByName.get('sci fi & fantasy') ?? 10765);
+  // note: romance is NOT a tv genre
+
+  const data = { movieIds, tvIds, movieByName, tvByName, exp: now + GENRE_TTL_MS };
+  GENRE_CACHE.set(lang, data);
+  return data;
+}
+
+async function tmdbJson(url) {
+  const r = await fetch(url);
+  if (!r.ok) {
+    let msg = 'TMDb error';
+    try { const e = await r.json(); msg = e.status_message || msg; } catch {}
+    throw new Error(`${msg} (${r.status})`);
+  }
+  return r.json();
+}
+
+function normalizeItem(item, mediaType) {
+  return {
+    id: item.id,
+    title: item.title || item.name,
+    overview: item.overview,
+    poster_path: item.poster_path,
+    backdrop_path: item.backdrop_path,
+    vote_average: item.vote_average,
+    release_date: item.release_date || item.first_air_date,
+    media_type: mediaType || item.media_type || 'movie',
+  };
+}
+
+app.get("/api/search", async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page || '1', 10));
+  const language = typeof req.query.language === 'string' && req.query.language.trim() ? req.query.language : 'en-US';
+  const query = typeof req.query.query === 'string' ? req.query.query.trim() : '';
+  const movieGenres = typeof req.query.movieGenres === 'string' ? req.query.movieGenres.trim() : '';
+  const tvGenres = typeof req.query.tvGenres === 'string' ? req.query.tvGenres.trim() : '';
+  const legacyGenres = typeof req.query.genres === 'string' ? req.query.genres.trim() : '';
+
+  try {
+    const { movieIds, tvIds, movieByName, tvByName } = await fetchGenreData(language);
+
+    // Parse advanced genre params (ids or names, comma-separated)
+    const parseGenreParam = (raw, type) => {
+      if (!raw) return { ids: [], romanceFlag: false, names: [] };
+      const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+      const ids = [];
+      let romanceFlag = false;
+      const names = [];
+
+      for (const part of parts) {
+        if (/^\d+$/.test(part)) {
+          const id = parseInt(part, 10);
+          if (type === 'movie' && movieIds.has(id)) ids.push(id);
+          else if (type === 'tv' && tvIds.has(id)) ids.push(id);
+          else if (type === 'tv' && id === 10749) romanceFlag = true; // Romance invalid for TV
+        } else {
+          const n = normName(part);
+          names.push(n);
+          if (type === 'movie' && movieByName.has(n)) ids.push(movieByName.get(n));
+          else if (type === 'tv' && tvByName.has(n)) ids.push(tvByName.get(n));
+          else if (type === 'tv' && n === 'romance') romanceFlag = true;
+        }
+      }
+      // Deduplicate
+      return { ids: Array.from(new Set(ids)), romanceFlag, names };
+    };
+
+    // Support legacy ?genres= (apply to both types)
+    let mGenRaw = movieGenres;
+    let tGenRaw = tvGenres;
+
+    if (legacyGenres && !movieGenres && !tvGenres) {
+      const parts = legacyGenres.split(',').map(s => s.trim()).filter(Boolean);
+      const mIds = [];
+      const tIds = [];
+      for (const part of parts) {
+        if (/^\d+$/.test(part)) {
+          const id = parseInt(part, 10);
+          if (movieIds.has(id)) mIds.push(id);
+          if (tvIds.has(id)) tIds.push(id);
+        } else {
+          const n = normName(part);
+          if (movieByName.has(n)) mIds.push(movieByName.get(n));
+          if (tvByName.has(n)) tIds.push(tvByName.get(n));
+          if (n === 'romance') tGenRaw = (tGenRaw ? `${tGenRaw},` : '') + 'romance';
+        }
+      }
+      if (mIds.length) mGenRaw = mIds.join(',');
+      if (tIds.length) tGenRaw = tIds.join(',');
     }
 
-    try {
-        const searchRes = await fetch(
-            `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(query)}&api_key=${TMDB_API_KEY}`
-        );
+    const { ids: mIdsParsed } = parseGenreParam(mGenRaw, 'movie');
+    const { ids: tIdsParsed, romanceFlag: tvRomanceFlag } = parseGenreParam(tGenRaw, 'tv');
 
-        if (!searchRes.ok) {
-            const tmdbError = await searchRes.json().catch(() => ({ status_message: 'Failed to parse TMDb error response.' }));
-            console.error(`TMDb API error: Status ${searchRes.status}, Message: ${tmdbError.status_message}`);
-            return res.status(searchRes.status).json({ error: tmdbError.status_message || "Failed to fetch from TMDb API." });
+    const hasAdvanced = (mIdsParsed.length > 0) || (tIdsParsed.length > 0) || tvRomanceFlag;
+
+    if (hasAdvanced) {
+      const requests = [];
+      let totalResults = 0;
+      let totalPages = 0;
+      const merged = [];
+
+      // discover/movie
+      if (mIdsParsed.length) {
+        const params = new URLSearchParams({
+          api_key: TMDB_API_KEY,
+          language,
+          with_genres: mIdsParsed.join(','),
+          sort_by: 'popularity.desc',
+          include_adult: 'false',
+          include_video: 'false',
+          'vote_count.gte': '1',
+          page: String(page),
+        });
+        requests.push(
+          tmdbJson(`https://api.themoviedb.org/3/discover/movie?${params.toString()}`)
+            .then(d => {
+              const arr = (d.results || []).map(i => normalizeItem(i, 'movie'));
+              merged.push(...arr);
+              totalResults += d.total_results || 0;
+              totalPages = Math.max(totalPages, d.total_pages || 1);
+            })
+        );
+      }
+
+      // discover/tv OR romance fallback
+      if (tIdsParsed.length) {
+        const params = new URLSearchParams({
+          api_key: TMDB_API_KEY,
+          language,
+          with_genres: tIdsParsed.join(','),
+          sort_by: 'popularity.desc',
+          include_adult: 'false',
+          include_video: 'false',
+          'vote_count.gte': '1',
+          page: String(page),
+        });
+        requests.push(
+          tmdbJson(`https://api.themoviedb.org/3/discover/tv?${params.toString()}`)
+            .then(d => {
+              const arr = (d.results || []).map(i => normalizeItem(i, 'tv'));
+              merged.push(...arr);
+              totalResults += d.total_results || 0;
+              totalPages = Math.max(totalPages, d.total_pages || 1);
+            })
+        );
+      } else if (tvRomanceFlag) {
+        // Graceful fallback for Romance TV: text search
+        const params = new URLSearchParams({
+          api_key: TMDB_API_KEY,
+          language,
+          query: 'romance',
+          include_adult: 'false',
+          page: String(page),
+        });
+        requests.push(
+          tmdbJson(`https://api.themoviedb.org/3/search/tv?${params.toString()}`)
+            .then(d => {
+              const arr = (d.results || []).map(i => normalizeItem(i, 'tv'));
+              merged.push(...arr);
+              totalResults += d.total_results || 0;
+              totalPages = Math.max(totalPages, d.total_pages || 1);
+            })
+        );
+      }
+
+      await Promise.all(requests);
+
+      // Sort merged by most recent air/release date (optional)
+      merged.sort((a, b) => {
+        const da = new Date(a.release_date || 0).getTime();
+        const db = new Date(b.release_date || 0).getTime();
+        return db - da;
+      });
+
+      return res.json({
+        results: merged,
+        total_results: totalResults || merged.length,
+        total_pages: totalPages || 1,
+        page,
+      });
+    }
+
+    // Default: text search (search/multi)
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required.' });
+    }
+    const params = new URLSearchParams({
+      api_key: TMDB_API_KEY,
+      language,
+      query,
+      include_adult: 'false',
+      page: String(page),
+    });
+    const data = await tmdbJson(`https://api.themoviedb.org/3/search/multi?${params.toString()}`);
+    const arr = (data.results || [])
+      .filter(i => i.media_type !== 'person')
+      .map(i => normalizeItem(i));
+    return res.json({
+      results: arr,
+      total_results: data.total_results || arr.length,
+      total_pages: data.total_pages || 1,
+      page,
+    });
+  } catch (err) {
+    console.error('Server /api/search error:', err);
+    return res.status(500).json({ error: err.message || 'Internal server error.' });
+  }
+});
+
+app.get('/api/search/suggest', async (req, res) => {
+    try {
+        if (!TMDB_API_KEY) return res.status(500).json({ error: 'TMDb API Key missing' });
+        const q = (req.query.q || '').toString().trim();
+        const limit = Math.min(parseInt(req.query.limit || '8', 10), 20);
+
+        // Cache key
+        const key = q ? `suggest:q:${q}:${limit}` : `suggest:trending:${limit}`;
+        const cached = getCache(key);
+        if (cached) return res.json({ suggestions: cached });
+
+        let suggestions = [];
+
+        if (!q) {
+            // Use trending as default suggestions
+            const tRes = await fetch(`https://api.themoviedb.org/3/trending/all/day?api_key=${TMDB_API_KEY}`);
+            const tData = await tRes.json();
+            const names = (tData.results || [])
+                .map(i => i.title || i.name)
+                .filter(Boolean);
+            // Unique, compact list
+            suggestions = [...new Set(names)].slice(0, limit);
+        } else {
+            // Use multi search for typed suggestions
+            const sRes = await fetch(
+                `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(q)}&api_key=${TMDB_API_KEY}`
+            );
+            const sData = await sRes.json();
+            const names = (sData.results || [])
+                .filter(i => i.media_type !== 'person')
+                .map(i => i.title || i.name)
+                .filter(Boolean);
+            suggestions = [...new Set(names)].slice(0, limit);
         }
 
-        const searchData = await searchRes.json();
-        const processedResults = searchData.results
-            .filter(item => item.media_type !== 'person')
-            .map(item => ({
-                id: item.id,
-                title: item.title || item.name,
-                overview: item.overview,
-                poster_path: item.poster_path,
-                backdrop_path: item.backdrop_path,
-                vote_average: item.vote_average,
-                release_date: item.release_date || item.first_air_date,
-                media_type: item.media_type,
-            }));
-
-        res.json(processedResults);
+        setCache(key, suggestions, 60_000);
+        res.json({ suggestions });
     } catch (err) {
-        console.error("Server error during TMDb API call or processing:", err);
-        res.status(500).json({ error: err.message || "Internal server error. Failed to process movie search." });
+        console.error('Suggest error:', err);
+        res.status(500).json({ error: 'Failed to build suggestions' });
+    }
+});
+// New Releases endpoint: discover movies sorted by release date
+app.get('/api/discover/movie', async (req, res) => {
+    try {
+        const params = new URLSearchParams({
+            language: req.query.language || 'en-US',
+            sort_by: req.query.sort_by || 'release_date.desc',
+            page: req.query.page || '1',
+            api_key: TMDB_API_KEY,
+        });
+        const url = `https://api.themoviedb.org/3/discover/movie?${params.toString()}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.status_message || response.statusText || 'Unknown error');
+        }
+        const data = await response.json();
+        res.json(data.results || []);
+    } catch (err) {
+        console.error('Server error fetching new releases:', err);
+        res.status(500).json({ error: err.message || 'Internal server error. Failed to fetch new releases.' });
     }
 });
 
@@ -373,6 +641,27 @@ app.post('/api/save-history', async (req, res) => {
     } catch (err) {
         console.error("Error saving movie to history:", err);
         res.status(500).json({ error: "Internal server error. Failed to save movie to history." });
+    }
+});
+// Delete specific movies from history
+app.post('/api/history/delete-selected', async (req, res) => {
+    try {
+        const { userId, movieIds } = req.body;
+        if (!userId || !Array.isArray(movieIds) || movieIds.length === 0) {
+            return res.status(400).json({ message: 'userId and movieIds[] are required.' });
+        }
+        const result = await MovieHistory.findOneAndUpdate(
+            { userId: userId },
+            { $pull: { watchedMovies: { movieId: { $in: movieIds } } } },
+            { new: true }
+        );
+        if (!result) {
+            return res.status(404).json({ message: 'No viewing history found for this user.' });
+        }
+        res.status(200).json({ message: 'Selected movies deleted from history.', history: result.watchedMovies });
+    } catch (error) {
+        console.error('Error deleting selected movies from history:', error);
+        res.status(500).json({ message: 'Server error while deleting selected movies.' });
     }
 });
 

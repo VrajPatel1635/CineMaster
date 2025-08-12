@@ -1,0 +1,185 @@
+/* frontend/src/app/watchlist/watchlist.module.css */
+
+/* Page background with subtle premium glow */
+.page {
+  min-height: 100dvh;
+  background:
+    radial-gradient(1200px 800px at 20% 10%, color-mix(in srgb, var(--color-accent,#3498DB) 8%, transparent), transparent 60%),
+    radial-gradient(1000px 700px at 80% 85%, color-mix(in srgb, var(--color-text-secondary,#5C7C99) 7%, transparent), transparent 65%),
+    linear-gradient(180deg, var(--color-background-primary,#FEFCF3) 0%, var(--color-background-secondary,#F5EBE0) 60%, var(--color-background-primary,#FEFCF3) 100%);
+  color: var(--color-text-primary,#DBA39A);
+}
+
+/* Container */
+.container {
+  max-width: 1150px;
+  margin: 0 auto;
+  padding: 95px 16px;
+}
+
+/* Hero */
+.hero { position: relative; margin-bottom: 16px; }
+.heroInner {
+  position: relative; z-index: 1;
+  border-radius: 20px;
+  padding: clamp(16px, 2.8vw, 24px);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--color-glass-bg, rgba(255,255,255,0.15)) 100%, transparent),
+      color-mix(in srgb, var(--color-glass-bg, rgba(255,255,255,0.15)) 85%, transparent));
+  backdrop-filter: blur(14px) saturate(120%);
+  border: 1px solid color-mix(in srgb, var(--color-border-glow, rgba(52,152,219,0.6)) 55%, transparent);
+  box-shadow:
+    0 22px 48px var(--color-shadow-heavy, rgba(0,0,0,0.25)),
+    inset 0 0 0 1px var(--color-shadow-light, rgba(0,0,0,0.1));
+}
+.heroGlow {
+  position: absolute; inset: 0; filter: blur(22px); opacity: 0.25; border-radius: 26px;
+  background:
+    radial-gradient(40% 50% at 20% 10%, color-mix(in srgb, var(--color-accent,#3498DB) 20%, transparent), transparent),
+    radial-gradient(45% 55% at 80% 90%, color-mix(in srgb, var(--color-text-secondary,#5C7C99) 18%, transparent), transparent);
+}
+
+.heroTitleWrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.heroTitle {
+  font-weight: 900; font-size: clamp(1.6rem, 4vw, 2.4rem);
+  color: var(--color-text-secondary,#5C7C99); margin: 0;
+}
+.statsRow { display: flex; gap: 8px; flex-wrap: wrap; }
+.statChip, .statChipError {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: 999px; font-weight: 700; color: #fff; font-size: 0.85rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.08));
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.statChipError { background: color-mix(in srgb, var(--color-error,#e74c3c) 22%, transparent); }
+
+/* Controls */
+.controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 12px; }
+@media (min-width: 860px) {
+  .controls { grid-template-columns: 1.2fr auto auto; align-items: center; }
+}
+.inputWrap {
+  position: relative;
+  background: linear-gradient(180deg, rgba(255,255,255,0.15), rgba(255,255,255,0.08));
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 12px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;
+}
+.inputIcon { color: color-mix(in srgb, var(--color-text-secondary,#5C7C99) 85%, transparent); }
+.input {
+  flex: 1; background: transparent; outline: none; border: 0;
+  color: var(--color-text-secondary,#5C7C99); font-weight: 600;
+}
+.sortRow { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
+  border: 1px solid rgba(255,255,255,0.25); color: var(--color-text-secondary,#5C7C99);
+  font-weight: 700; cursor: pointer; transition: transform 0.15s ease, filter 0.15s ease;
+}
+.chip:hover { transform: translateY(-1px); filter: saturate(112%); }
+.chipActive {
+  color: #fff; background: linear-gradient(135deg, var(--color-accent,#3498DB), var(--color-accent-dark,hsl(190,80%,30%)));
+  border: 1px solid rgba(255,255,255,0.25);
+}
+
+.actions { display: flex; gap: 8px; justify-content: flex-start; }
+@media (min-width: 860px) { .actions { justify-content: flex-end; } }
+
+/* Shine buttons */
+@keyframes shineForward {
+  0% { transform: translateX(-140%) skewX(-15deg); opacity: 0; }
+  10% { opacity: 0.45; }
+  50% { opacity: 0.25; }
+  100% { transform: translateX(180%) skewX(-15deg); opacity: 0; }
+}
+@keyframes shineReverse {
+  0% { transform: translateX(180%) skewX(-15deg); opacity: 0; }
+  10% { opacity: 0.45; }
+  50% { opacity: 0.25; }
+  100% { transform: translateX(-140%) skewX(-15deg); opacity: 0; }
+}
+.btn {
+  position: relative; display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 999px; padding: 10px 16px; font-weight: 800; color: #fff; letter-spacing: 0.2px;
+  border: 1px solid transparent; cursor: pointer; overflow: hidden;
+  transition: transform 0.18s ease, filter 0.18s ease, opacity 0.2s ease, box-shadow 0.25s ease;
+}
+.btn:hover { transform: translateY(-2px); filter: saturate(112%); }
+.btn:active { transform: translateY(-1px); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+.shine {
+  content: '';
+  position: absolute; top: 0; left: -120%; width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+  transform: skewX(-15deg); pointer-events: none;
+}
+.btn:hover .shine { animation: shineForward 820ms ease forwards; }
+.reverse:hover .shine { animation: shineReverse 820ms ease forwards; }
+
+.secondary {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-text-secondary,#5C7C99) 10%, transparent), transparent) padding-box,
+    linear-gradient(135deg, var(--color-text-secondary,#5C7C99), color-mix(in srgb, var(--color-text-secondary,#5C7C99) 60%, var(--color-accent,#3498DB) 40%)) border-box;
+  border: 1px solid transparent;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-text-secondary,#5C7C99) 22%, transparent);
+}
+
+.danger {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-error,#e74c3c) 14%, transparent), transparent) padding-box,
+    linear-gradient(135deg, var(--color-error,#e74c3c), color-mix(in srgb, var(--color-error,#e74c3c) 60%, var(--color-accent,#3498DB) 40%)) border-box;
+  border: 1px solid transparent;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-error,#e74c3c) 20%, transparent);
+}
+
+.ghost {
+  color: var(--color-text-secondary,#5C7C99);
+  background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.25);
+}
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Content + Grid */
+.content { padding: 8px 0 26px; }
+.grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+}
+@media (min-width: 640px) { .grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (min-width: 1024px) { .grid { grid-template-columns: repeat(5, minmax(0,1fr)); } }
+@media (min-width: 1280px) { .grid { grid-template-columns: repeat(6, minmax(0,1fr)); } }
+
+.errorBox {
+  text-align: center; padding: 26px 10px; font-weight: 700;
+  color: color-mix(in srgb, var(--color-text-secondary,#5C7C99) 85%, transparent);
+}
+
+.emptyState { text-align: center; padding: 40px 10px; color: var(--color-text-secondary,#5C7C99); }
+.emptyIcon { font-size: 48px; opacity: 0.7; margin-bottom: 8px; }
+.emptySub { font-size: 0.9rem; opacity: 0.8; }
+
+/* Modal */
+.modalOverlay {
+  position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;
+  background: rgba(0,0,0,0.45); backdrop-filter: blur(6px);
+}
+.modal {
+  width: min(520px, 92vw);
+  background: linear-gradient(180deg, rgba(255,255,255,0.15), rgba(255,255,255,0.06));
+  border: 1px solid rgba(255,255,255,0.25); border-radius: 16px; padding: 18px;
+  box-shadow: 0 22px 48px rgba(0,0,0,0.35);
+}
+.modalTitle {
+  font-weight: 800; color: var(--color-text-secondary,#5C7C99); margin-bottom: 8px; font-size: 1.25rem;
+}
+.modalText { color: var(--color-text-primary,#DBA39A); margin-bottom: 14px; }
+.modalActions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* Motion reduction */
+@media (prefers-reduced-motion: reduce) {
+  .btn:hover .shine, .reverse:hover .shine { animation: none !important; }
+}
