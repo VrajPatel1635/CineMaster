@@ -97,8 +97,8 @@ app.get('/', (req, res) => {
 });
 
 // Genre cache per language
-const GENRE_CACHE = new Map(); // key: lang -> { movieIds:Set, tvIds:Set, movieByName:Map, tvByName:Map, exp:number }
-const GENRE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+const GENRE_CACHE = new Map(); 
+const GENRE_TTL_MS = 24 * 60 * 60 * 1000; 
 
 function normName(s = '') {
   return s.toLowerCase().replace(/&/g, 'and').replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -126,9 +126,7 @@ async function fetchGenreData(lang = 'en-US') {
 
   const tvByName = new Map();
   tJson.genres.forEach(g => tvByName.set(normName(g.name), g.id));
-  // helpful synonyms
   tvByName.set('sci fi', tvByName.get('sci fi and fantasy') ?? tvByName.get('sci fi & fantasy') ?? 10765);
-  // note: romance is NOT a tv genre
 
   const data = { movieIds, tvIds, movieByName, tvByName, exp: now + GENRE_TTL_MS };
   GENRE_CACHE.set(lang, data);
@@ -160,7 +158,8 @@ function normalizeItem(item, mediaType) {
 
 app.get("/api/search", async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page || '1', 10));
-  const language = typeof req.query.language === 'string' && req.query.language.trim() ? req.query.language : 'en-US';
+  const language = typeof req.query.language === 'string' && 
+  req.query.language.trim() ? req.query.language : 'en-US';
   const query = typeof req.query.query === 'string' ? req.query.query.trim() : '';
   const movieGenres = typeof req.query.movieGenres === 'string' ? req.query.movieGenres.trim() : '';
   const tvGenres = typeof req.query.tvGenres === 'string' ? req.query.tvGenres.trim() : '';
@@ -275,7 +274,6 @@ app.get("/api/search", async (req, res) => {
             })
         );
       } else if (tvRomanceFlag) {
-        // Graceful fallback for Romance TV: text search
         const params = new URLSearchParams({
           api_key: TMDB_API_KEY,
           language,

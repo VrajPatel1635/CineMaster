@@ -47,29 +47,6 @@ const TV_GENRES = [
   { id: 37, name: 'Western' },
 ];
 
-const LANGUAGES = [
-  { code: 'all', name: 'All Languages' },
-  { code: 'en', name: 'English' },
-  { code: 'hi', name: 'Hindi' },
-  { code: 'fr', name: 'French' },
-  { code: 'es', name: 'Spanish' },
-  { code: 'ja', name: 'Japanese' },
-  { code: 'ko', name: 'Korean' },
-  { code: 'zh', name: 'Chinese' },
-  { code: 'de', name: 'German' },
-  { code: 'ru', name: 'Russian' },
-  { code: 'it', name: 'Italian' },
-  { code: 'te', name: 'Telugu' },
-  { code: 'ta', name: 'Tamil' },
-  { code: 'ml', name: 'Malayalam' },
-  { code: 'bn', name: 'Bengali' },
-  { code: 'tr', name: 'Turkish' },
-  { code: 'pt', name: 'Portuguese' },
-  { code: 'ar', name: 'Arabic' },
-  { code: 'mr', name: 'Marathi' },
-  { code: 'pa', name: 'Punjabi' },
-  { code: 'gu', name: 'Gujarati' },
-];
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -155,7 +132,6 @@ export default function GenreSearchModal({ open, onClose, onSearch }) {
     setSelectedMovieGenres([]);
     setSelectedTvGenres([]);
     setFilterTerm('');
-    setSelectedLanguage('all');
   };
 
   const removeChip = (id, type) => {
@@ -169,7 +145,6 @@ export default function GenreSearchModal({ open, onClose, onSearch }) {
       await onSearch({
         movieGenres: selectedMovieGenres,
         tvGenres: selectedTvGenres,
-        language: selectedLanguage === 'all' ? '' : selectedLanguage,
       });
       onClose();
     } finally {
@@ -336,10 +311,9 @@ export default function GenreSearchModal({ open, onClose, onSearch }) {
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-[color:var(--color-accent)] to-[color:var(--color-accent-dark,#4338CA)]">
                   Search by Genre
                 </span>{' '}
-                & Language
               </h2>
               <p id={descId} className="sr-only">
-                Choose one or more movie and TV genres, optionally filter by language, and search.
+                Choose one or more movie and TV genres, and search.
               </p>
             </div>
 
@@ -567,30 +541,6 @@ export default function GenreSearchModal({ open, onClose, onSearch }) {
                     <div className="text-sm text-zinc-500">No genres match your filter.</div>
                   )}
                 </motion.div>
-              </div>
-            </div>
-
-            {/* Language */}
-            <div className="mb-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-              <div className="flex items-center">
-                <label htmlFor="language-select" className="font-semibold mr-2">
-                  Language:
-                </label>
-                <select
-                  id="language-select"
-                  value={selectedLanguage}
-                  onChange={(e) => setSelectedLanguage(e.target.value)}
-                  className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200"
-                >
-                  {LANGUAGES.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="text-xs text-zinc-500">
-                Tip: Press Esc or drag down to close
               </div>
             </div>
 
