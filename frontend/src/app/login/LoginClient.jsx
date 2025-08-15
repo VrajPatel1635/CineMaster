@@ -9,16 +9,130 @@ import axios from "axios";
 import { useAuth } from '../../context/AuthContext';
 import styles from "./login.module.css";
 
+// Premium Input Component with better UX
+const PremiumInputField = ({ 
+  id, 
+  name, 
+  type, 
+  required, 
+  autoComplete, 
+  icon: Icon, 
+  label,
+  value,
+  onChange,
+  onValidation,
+  showPassword,
+  onTogglePassword,
+  hasPasswordToggle = false,
+  error = null,
+  success = false,
+  minLength
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const [isValid, setIsValid] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  const handleInputChange = (e) => {
+    if (onChange) onChange(e);
+    
+    // Basic validation
+    const inputValue = e.target.value;
+    const isValidInput = inputValue.length >= (minLength || (type === 'password' ? 6 : 1)) && 
+                        (type === 'email' ? /\S+@\S+\.\S+/.test(inputValue) : true);
+    setIsValid(isValidInput);
+    
+    if (onValidation) onValidation(isValidInput, inputValue);
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    setHasInteracted(true);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+  };
+
+  const inputType = hasPasswordToggle ? (showPassword ? 'text' : 'password') : type;
+  const hasError = error && error.length > 0 && hasInteracted;
+  const isSuccess = success && !hasError && isValid && value && value.length > 0 && hasInteracted;
+  const showFloatingLabel = isFocused || (value && value.length > 0);
+
+  return (
+    <div className={`${styles.premiumInputGroup} ${hasError ? styles.error : ''} ${isSuccess ? styles.success : ''} ${isFocused ? styles.focused : ''}`}>
+      <div className={styles.premiumIconSlot}>
+        <Icon size={20} />
+      </div>
+      
+      <input
+        id={id}
+        name={name}
+        type={inputType}
+        placeholder=" "
+        required={required}
+        autoComplete={autoComplete}
+        value={value || ''}
+        onChange={handleInputChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        minLength={minLength}
+      />
+      
+      <label htmlFor={id} className={showFloatingLabel ? styles.floating : ''}>{label}</label>
+      
+      {hasPasswordToggle && (
+        <button
+          type="button"
+          className={styles.premiumVisibilityButton}
+          onClick={onTogglePassword}
+          aria-label={showPassword ? "Hide password" : "Show password"}
+          title={showPassword ? "Hide password" : "Show password"}
+        >
+          {showPassword ? <MdVisibilityOff size={20} /> : <MdVisibility size={20} />}
+        </button>
+      )}
+      
+      {isSuccess && (
+        <motion.div 
+          className={styles.successIndicator}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+        >
+          <MdCheckCircle size={18} />
+        </motion.div>
+      )}
+            
+      {hasError && (
+        <motion.div 
+          className={styles.inputError}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+        >
+          {error}
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
 export default function LoginClient() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [email, setEmail] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("error");
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [passwordsMatch, setPasswordsMatch] = useState(true);
+  const [emailValid, setEmailValid] = useState(false);
+  const [passwordValid, setPasswordValid] = useState(false);
 
-  // Alternating shine direction per button (no glow)
+  // Alternating shine direction per button
   const [revSignup, setRevSignup] = useState(false);
   const [revSignin, setRevSignin] = useState(false);
 
@@ -48,20 +162,50 @@ export default function LoginClient() {
     }
   }, [isAuthenticated, authLoading, router, searchParams]);
 
-  const showSignIn = () => { setIsSignUp(false); setMessage(""); };
-  const showSignUp = () => { setIsSignUp(true); setMessage(""); };
+  const showSignIn = () => { 
+    setIsSignUp(false); 
+    setMessage(""); 
+    setPassword("");
+    setConfirmPassword("");
+    setEmail("");
+    setPasswordsMatch(true);
+  };
+  
+  const showSignUp = () => { 
+    setIsSignUp(true); 
+    setMessage(""); 
+    setPassword("");
+    setConfirmPassword("");
+    setEmail("");
+    setPasswordsMatch(true);
+  };
+
+  const handlePasswordChange = (e) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+    if (isSignUp && confirmPassword) {
+      setPasswordsMatch(newPassword === confirmPassword);
+    }
+  };
+
+  const handleConfirmPasswordChange = (e) => {
+    const newConfirmPassword = e.target.value;
+    setConfirmPassword(newConfirmPassword);
+    setPasswordsMatch(password === newConfirmPassword);
+    
+    if (newConfirmPassword === password || newConfirmPassword.length < 6) {
+      e.target.setCustomValidity("");
+    } else {
+      e.target.setCustomValidity("Passwords do not match");
+    }
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
     setFormSubmitting(true);
 
-    const formData = new FormData(e.target);
-    const email = formData.get("email");
-    const pwd = formData.get("password");
-    const confirmPassword = formData.get("confirmPassword");
-
-    if (isSignUp && pwd !== confirmPassword) {
+    if (isSignUp && password !== confirmPassword) {
       setMessage("Passwords do not match");
       setMessageType("error");
       setFormSubmitting(false);
@@ -69,7 +213,7 @@ export default function LoginClient() {
     }
 
     try {
-      const authResult = isSignUp ? await signup(email, pwd) : await login(email, pwd);
+      const authResult = isSignUp ? await signup(email, password) : await login(email, password);
 
       if (authResult.success) {
         const redirect = searchParams.get("redirect");
@@ -101,15 +245,7 @@ export default function LoginClient() {
     }
   };
 
-  const onChangeConfirmPass = (e) => {
-    if (e.target.value === password || e.target.value.length < 6) {
-      e.target.setCustomValidity("");
-    } else {
-      e.target.setCustomValidity("Passwords do not match");
-    }
-  };
-
-  // rAF-throttled pointer handlers (GPU-friendly)
+  // Background and card pointer handlers (keeping your existing ones)
   const bgRaf = useRef(0);
   const bgLast = useRef({ mx: 50, my: 50 });
   const handleBGPointerMove = (e) => {
@@ -137,7 +273,7 @@ export default function LoginClient() {
     const rect = el.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width;
     const py = (e.clientY - rect.top) / rect.height;
-    const rx = (py - 0.5) * -4; // reduced tilt amplitude
+    const rx = (py - 0.5) * -4;
     const ry = (px - 0.5) * 4;
     cardLast.current.rx = rx;
     cardLast.current.ry = ry;
@@ -149,6 +285,7 @@ export default function LoginClient() {
       });
     }
   };
+  
   const handleCardLeave = () => {
     const el = cardRef.current; if (!el) return;
     el.style.setProperty("--rx", `0deg`);
@@ -185,8 +322,7 @@ export default function LoginClient() {
   }
 
   return (
-    <div ref={bgRef} className={styles.animatedBackground } onPointerMove={handleBGPointerMove}>
-      {/* Lite, GPU-friendly layers */}
+    <div ref={bgRef} className={styles.animatedBackground} onPointerMove={handleBGPointerMove}>
       <div className={styles.spotA} />
       <div className={styles.spotB} />
       <div className={styles.glow} />
@@ -237,63 +373,55 @@ export default function LoginClient() {
               <h2 className={styles.subtitle}>Join CineMaster and build your ultimate watchlist</h2>
 
               <form onSubmit={onSubmit} className="w-full flex flex-col items-center gap-6 mt-6">
-                <div className={styles.inputGroup}>
-                  <div className={styles.iconSlot}><MdEmail size={18} /></div>
-                  <input id="signup-email" name="email" type="email" placeholder=" " required autoComplete="email" />
-                  <label htmlFor="signup-email">Email</label>
-                  <span className={styles.ring} />
-                </div>
+                <PremiumInputField
+                  id="signup-email"
+                  name="email"
+                  type="email"
+                  label="Email Address"
+                  icon={MdEmail}
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onValidation={(isValid) => setEmailValid(isValid)}
+                  success={emailValid}
+                />
 
-                <div className={styles.inputGroup}>
-                  <div className={styles.iconSlot}><MdLock size={18} /></div>
-                  <input
-                    id="signup-password"
-                    type={showPass ? "text" : "password"}
-                    name="password"
-                    minLength={6}
-                    placeholder=" "
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="new-password"
-                  />
-                  <label htmlFor="signup-password">Password</label>
-                  <button
-                    type="button"
-                    aria-label={showPass ? "Hide password" : "Show password"}
-                    onClick={() => setShowPass(v => !v)}
-                    title={showPass ? "Hide password" : "Show password"}
-                    className={styles.iconButton}
-                  >
-                    {showPass ? <MdVisibilityOff size={22} /> : <MdVisibility size={22} />}
-                  </button>
-                  <span className={styles.ring} />
-                </div>
+                <PremiumInputField
+                  id="signup-password"
+                  name="password"
+                  type="password"
+                  label="Password"
+                  icon={MdLock}
+                  required
+                  autoComplete="new-password"
+                  minLength={6}
+                  value={password}
+                  onChange={handlePasswordChange}
+                  onValidation={(isValid) => setPasswordValid(isValid)}
+                  hasPasswordToggle={true}
+                  showPassword={showPass}
+                  onTogglePassword={() => setShowPass(v => !v)}
+                  success={passwordValid}
+                />
 
-                <div className={styles.inputGroup}>
-                  <div className={styles.iconSlot}><MdLock size={18} /></div>
-                  <input
-                    id="signup-confirmPassword"
-                    type={showConfirm ? "text" : "password"}
-                    name="confirmPassword"
-                    minLength={6}
-                    placeholder=" "
-                    required
-                    onChange={onChangeConfirmPass}
-                    autoComplete="new-password"
-                  />
-                  <label htmlFor="signup-confirmPassword">Confirm Password</label>
-                  <button
-                    type="button"
-                    aria-label={showConfirm ? "Hide password" : "Show password"}
-                    onClick={() => setShowConfirm(v => !v)}
-                    title={showConfirm ? "Hide password" : "Show password"}
-                    className={styles.iconButton}
-                  >
-                    {showConfirm ? <MdVisibilityOff size={22} /> : <MdVisibility size={22} />}
-                  </button>
-                  <span className={styles.ring} />
-                </div>
+                <PremiumInputField
+                  id="signup-confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  label="Confirm Password"
+                  icon={MdLock}
+                  required
+                  autoComplete="new-password"
+                  minLength={6}
+                  value={confirmPassword}
+                  onChange={handleConfirmPasswordChange}
+                  hasPasswordToggle={true}
+                  showPassword={showConfirm}
+                  onTogglePassword={() => setShowConfirm(v => !v)}
+                  error={!passwordsMatch && confirmPassword.length > 0 ? "Passwords do not match" : null}
+                  success={passwordsMatch && confirmPassword.length >= 6}
+                />
 
                 <div className="flex flex-col items-center w-full mt-2">
                   <button
@@ -335,36 +463,37 @@ export default function LoginClient() {
               <h2 className={styles.subtitle}>Welcome back — time to continue your story</h2>
 
               <form onSubmit={onSubmit} className="w-full flex flex-col items-center gap-6 mt-6">
-                <div className={styles.inputGroup}>
-                  <div className={styles.iconSlot}><MdEmail size={18} /></div>
-                  <input id="signin-email" name="email" type="email" placeholder=" " required autoComplete="email" />
-                  <label htmlFor="signin-email">Email</label>
-                  <span className={styles.ring} />
-                </div>
+                <PremiumInputField
+                  id="signin-email"
+                  name="email"
+                  type="email"
+                  label="Email Address"
+                  icon={MdEmail}
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onValidation={(isValid) => setEmailValid(isValid)}
+                  success={emailValid}
+                />
 
-                <div className={styles.inputGroup}>
-                  <div className={styles.iconSlot}><MdLock size={18} /></div>
-                  <input
-                    id="signin-password"
-                    name="password"
-                    type={showPass ? "text" : "password"}
-                    minLength={6}
-                    placeholder=" "
-                    required
-                    autoComplete="current-password"
-                  />
-                  <label htmlFor="signin-password">Password</label>
-                  <button
-                    type="button"
-                    aria-label={showPass ? "Hide password" : "Show password"}
-                    onClick={() => setShowPass(v => !v)}
-                    title={showPass ? "Hide password" : "Show password"}
-                    className={styles.iconButton}
-                  >
-                    {showPass ? <MdVisibilityOff size={22} /> : <MdVisibility size={22} />}
-                  </button>
-                  <span className={styles.ring} />
-                </div>
+                <PremiumInputField
+                  id="signin-password"
+                  name="password"
+                  type="password"
+                  label="Password"
+                  icon={MdLock}
+                  required
+                  autoComplete="current-password"
+                  minLength={6}
+                  value={password}
+                  onChange={handlePasswordChange}
+                  onValidation={(isValid) => setPasswordValid(isValid)}
+                  hasPasswordToggle={true}
+                  showPassword={showPass}
+                  onTogglePassword={() => setShowPass(v => !v)}
+                  success={passwordValid}
+                />
 
                 <div className="flex flex-col items-center w-full mt-2">
                   <button

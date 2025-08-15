@@ -85,126 +85,256 @@
   pointer-events: none;
 }
 
-/* ============ Inputs (floating label + icon capsule) ============ */
-.inputGroup {
+/* ============ Premium Input Fields ============ */
+.premiumInputGroup {
   position: relative;
   width: 100%;
-  height: 60px;
+  height: 68px;
   border-radius: 16px;
   background:
-    linear-gradient(180deg,
-      color-mix(in srgb, var(--color-input-bg, rgba(255,255,255,0.6)) 100%, transparent),
-      color-mix(in srgb, var(--color-input-bg, rgba(255,255,255,0.6)) 85%, transparent));
-  border: 1px solid color-mix(in srgb, var(--color-border-glow, rgba(52,152,219,0.6)) 35%, transparent);
-  transition: box-shadow 0.25s ease, border-color 0.25s ease;
-}
-.inputGroup:focus-within {
-  border-color: color-mix(in srgb, var(--color-border-glow, rgba(52,152,219,0.6)) 85%, transparent);
-  box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--color-border-glow, rgba(52,152,219,0.6)) 25%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--color-border-glow, rgba(52,152,219,0.6)) 55%, transparent);
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--color-input-bg, rgba(255,255,255,0.08)) 100%, transparent) 0%,
+      color-mix(in srgb, var(--color-input-bg, rgba(255,255,255,0.04)) 85%, transparent) 100%);
+  border: 1px solid color-mix(in srgb, var(--color-border-glow, rgba(52,152,219,0.2)) 100%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 1px 3px color-mix(in srgb, black 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 20%, transparent);
 }
 
-.inputGroup input {
+.premiumInputGroup.focused {
+  border-color: var(--color-accent, #3498DB);
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--color-input-bg, rgba(255,255,255,0.12)) 100%, transparent) 0%,
+      color-mix(in srgb, var(--color-input-bg, rgba(255,255,255,0.08)) 85%, transparent) 100%);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-accent, #3498DB) 25%, transparent),
+    0 8px 25px color-mix(in srgb, var(--color-accent, #3498DB) 10%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 40%, transparent);
+  transform: translateY(-1px);
+}
+
+.premiumInputGroup.error {
+  border-color: var(--color-error, #e74c3c);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-error, #e74c3c) 25%, transparent),
+    0 4px 12px color-mix(in srgb, var(--color-error, #e74c3c) 10%, transparent);
+}
+
+.premiumInputGroup.success {
+  border-color: var(--color-success, #2ecc71);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-success, #2ecc71) 25%, transparent),
+    0 4px 12px color-mix(in srgb, var(--color-success, #2ecc71) 10%, transparent);
+}
+
+.premiumInputGroup input {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  padding: 0 3rem 0 54px;
-  color: var(--color-text-secondary, #5C7C99);
+  padding: 24px 60px 8px 60px;
+  color: var(--color-text-primary, #ffffff);
   background: transparent;
   border: none;
   outline: none;
-  font-size: 1.02rem;
+  font-size: 1rem;
+  font-weight: 500;
   border-radius: inherit;
   caret-color: var(--color-accent, #3498DB);
-  -webkit-text-fill-color: var(--color-text-secondary, #5C7C99);
-  appearance: none;
+  transition: all 0.2s ease;
+  letter-spacing: 0.3px;
 }
-.inputGroup input::placeholder { color: transparent; }
-.inputGroup input:autofill,
-.inputGroup input:-webkit-autofill {
-  -webkit-text-fill-color: var(--color-text-secondary, #5C7C99);
+
+.premiumInputGroup input::placeholder { 
+  color: transparent; 
+}
+
+.premiumInputGroup input:autofill,
+.premiumInputGroup input:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-text-primary, #ffffff);
   transition: background-color 600000s 0s, color 600000s 0s;
+  -webkit-box-shadow: 0 0 0 1000px color-mix(in srgb, var(--color-input-bg, rgba(255,255,255,0.05)) 100%, transparent) inset;
 }
 
-.inputGroup label {
+.premiumInputGroup label {
   position: absolute;
-  left: 54px;
+  left: 60px;
   top: 50%;
   transform: translateY(-50%);
-  color: color-mix(in srgb, var(--color-text-secondary, #5C7C99) 75%, transparent);
-  font-size: 0.98rem;
-  letter-spacing: 0.2px;
+  color: color-mix(in srgb, var(--color-text-secondary, #94a3b8) 100%, transparent);
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.3px;
   pointer-events: none;
-  transition: all 0.22s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   background: transparent;
-  padding: 0 6px;
-}
-.inputGroup:focus-within label,
-.inputGroup input:not(:placeholder-shown) + label {
-  top: 8px;
-  transform: none;
-  font-size: 0.78rem;
-  color: var(--color-accent, #3498DB);
-  background: color-mix(in srgb, var(--color-accent, #3498DB) 12%, transparent);
-  border-radius: 6px;
+  padding: 0;
+  z-index: 2;
 }
 
-.iconSlot {
+.premiumInputGroup label.floating {
+  top: 12px;
+  transform: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-accent, #3498DB);
+}
+
+.premiumInputGroup.error label.floating {
+  color: var(--color-error, #e74c3c);
+}
+
+.premiumInputGroup.success label.floating {
+  color: var(--color-success, #2ecc71);
+}
+
+.premiumIconSlot {
   position: absolute;
-  left: 10px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  color: color-mix(in srgb, var(--color-text-secondary, #5C7C99) 90%, transparent);
+  color: var(--color-text-secondary, #94a3b8);
   background:
-    linear-gradient(180deg,
-      color-mix(in srgb, var(--color-input-bg, rgba(255,255,255,0.6)) 95%, transparent),
-      color-mix(in srgb, var(--color-input-bg, rgba(255,255,255,0.6)) 80%, transparent));
-  border: 1px solid color-mix(in srgb, var(--color-border-glow, rgba(52,152,219,0.6)) 35%, transparent);
-  box-shadow: inset 0 0 10px color-mix(in srgb, var(--color-accent, #3498DB) 10%, transparent);
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--color-accent, #3498DB) 8%, transparent) 0%,
+      color-mix(in srgb, var(--color-accent, #3498DB) 4%, transparent) 100%);
+  border: 1px solid color-mix(in srgb, var(--color-accent, #3498DB) 20%, transparent);
+  box-shadow: 
+    inset 0 1px 0 color-mix(in srgb, white 15%, transparent);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 3;
 }
 
-.ring {
-  pointer-events: none;
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: conic-gradient(
-    from 180deg at 50% 50%,
-    color-mix(in srgb, var(--color-accent, #3498DB) 85%, transparent),
-    color-mix(in srgb, var(--color-text-secondary, #5C7C99) 85%, transparent),
-    color-mix(in srgb, var(--color-accent-dark, hsl(190, 80%, 30%)) 85%, transparent),
-    color-mix(in srgb, var(--color-accent, #3498DB) 85%, transparent)
-  );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  padding: 1px;
-  opacity: 0;
-  transition: opacity 0.25s ease;
+.premiumInputGroup.focused .premiumIconSlot {
+  color: var(--color-accent, #3498DB);
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--color-accent, #3498DB) 15%, transparent) 0%,
+      color-mix(in srgb, var(--color-accent, #3498DB) 8%, transparent) 100%);
+  border-color: var(--color-accent, #3498DB);
+  box-shadow: 
+    0 2px 8px color-mix(in srgb, var(--color-accent, #3498DB) 20%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 25%, transparent);
+  transform: translateY(-50%) scale(1.05);
 }
-.inputGroup:focus-within .ring { opacity: 1; }
 
-.iconButton {
-  all: unset; 
+.premiumInputGroup.error .premiumIconSlot {
+  color: var(--color-error, #e74c3c);
+  border-color: var(--color-error, #e74c3c);
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--color-error, #e74c3c) 12%, transparent) 0%,
+      color-mix(in srgb, var(--color-error, #e74c3c) 6%, transparent) 100%);
+}
+
+.premiumInputGroup.success .premiumIconSlot {
+  color: var(--color-success, #2ecc71);
+  border-color: var(--color-success, #2ecc71);
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--color-success, #2ecc71) 12%, transparent) 0%,
+      color-mix(in srgb, var(--color-success, #2ecc71) 6%, transparent) 100%);
+}
+
+.premiumVisibilityButton {
+  all: unset;
   position: absolute;
-  right: 0.75rem;
+  right: 16px;
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
-  color: color-mix(in srgb, var(--color-text-secondary, #5C7C99) 85%, transparent);
-  transition: color 0.2s ease, transform 0.1s ease;
+  color: color-mix(in srgb, var(--color-text-secondary, #94a3b8) 80%, transparent);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: grid;
   place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  z-index: 3;
 }
-.iconButton:hover { color: var(--color-accent, #3498DB); }
-.iconButton:active { transform: translateY(-50%) scale(0.95); }
+
+.premiumVisibilityButton:hover {
+  color: var(--color-accent, #3498DB);
+  background: color-mix(in srgb, var(--color-accent, #3498DB) 8%, transparent);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.premiumVisibilityButton:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.premiumInputGroup.focused .premiumVisibilityButton {
+  color: var(--color-accent, #3498DB);
+}
+
+/* Premium underline effect instead of rotating ring */
+.premiumUnderline {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background: var(--color-accent, #3498DB);
+  border-radius: 1px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premiumInputGroup.focused .premiumUnderline {
+  width: 100%;
+}
+
+.premiumInputGroup.error .premiumUnderline {
+  background: var(--color-error, #e74c3c);
+}
+
+.premiumInputGroup.success .premiumUnderline {
+  background: var(--color-success, #2ecc71);
+}
+
+/* Error message styling */
+.inputError {
+  position: absolute;
+  bottom: -28px;
+  left: 60px;
+  color: var(--color-error, #e74c3c);
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
+.premiumInputGroup.error .inputError {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Success indicator */
+.successIndicator {
+  position: absolute;
+  right: 58px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-success, #2ecc71);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 3;
+}
+
+.premiumInputGroup.success .successIndicator {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.1);
+}
 
 /* ============ Buttons (shine sweep; no glow) ============ */
 @keyframes shineForward {
@@ -213,6 +343,7 @@
   50% { opacity: 0.25; }
   100% { transform: translateX(180%) skewX(-15deg); opacity: 0; }
 }
+
 @keyframes shineReverse {
   0% { transform: translateX(180%) skewX(-15deg); opacity: 0; }
   10% { opacity: 0.45; }
@@ -268,6 +399,7 @@
   filter: saturate(112%);
   transform: translateY(-2px);
 }
+
 .shineButton:hover:not(:disabled)::before { left: 120%; }
 
 .shineButton:active:not(:disabled) { transform: translateY(-1px); }
@@ -300,6 +432,7 @@
   box-shadow: 0 12px 30px var(--color-shadow-heavy, rgba(0,0,0,0.25));
   background: color-mix(in srgb, var(--color-success, #2ecc71) 16%, transparent);
 }
+
 .toastError { background: color-mix(in srgb, var(--color-error, #e74c3c) 18%, transparent); }
 .toastSuccess { background: color-mix(in srgb, var(--color-success, #2ecc71) 18%, transparent); }
 
@@ -317,8 +450,8 @@
   .shineButton:hover,
   .shineButton:active { transform: none; }
   .animatedBackground { animation: none; }
+  .premiumUnderline { transition: none; }
 }
-
 
 /* ==================== Responsive Adjustments ==================== */
 
@@ -342,32 +475,29 @@
     font-size: 0.9rem; 
   }
 
-  .inputGroup {
-    height: 56px; 
+  /* Premium inputs responsive */
+  .premiumInputGroup {
+    height: 62px;
+  }
+  
+  .premiumInputGroup input {
+    font-size: 0.95rem;
+    padding: 22px 54px 8px 54px;
+  }
+  
+  .premiumInputGroup label {
+    left: 54px;
+    font-size: 0.95rem;
+  }
+  
+  .premiumIconSlot {
+    width: 36px;
+    height: 36px;
+    left: 12px;
   }
 
-  .inputGroup input {
-    font-size: 0.95rem; 
-    padding: 0 2.5rem 0 50px; 
-  }
-
-  .inputGroup label {
-    left: 50px; 
-    font-size: 0.9rem; 
-  }
-  .inputGroup:focus-within label,
-  .inputGroup input:not(:placeholder-shown) + label {
-    font-size: 0.7rem; 
-  }
-
-  .iconSlot {
-    width: 32px; 
-    height: 32px;
-    left: 8px;
-  }
-
-  .iconButton {
-    right: 0.5rem; 
+  .inputError {
+    left: 54px;
   }
 
   .shineButton {
@@ -404,32 +534,29 @@
     margin-top: 4px;
   }
 
-  .inputGroup {
-    height: 50px; 
+  /* Premium inputs responsive */
+  .premiumInputGroup {
+    height: 58px;
+  }
+  
+  .premiumInputGroup input {
+    font-size: 0.9rem;
+    padding: 20px 50px 8px 50px;
+  }
+  
+  .premiumInputGroup label {
+    left: 50px;
+    font-size: 0.9rem;
+  }
+  
+  .premiumIconSlot {
+    width: 32px;
+    height: 32px;
+    left: 10px;
   }
 
-  .inputGroup input {
-    font-size: 0.9rem; 
-    padding: 0 2.5rem 0 45px; 
-  }
-
-  .inputGroup label {
-    left: 45px; 
-    font-size: 0.8rem; 
-  }
-  .inputGroup:focus-within label,
-  .inputGroup input:not(:placeholder-shown) + label {
-    font-size: 0.65rem; 
-  }
-
-  .iconSlot {
-    width: 28px;
-    height: 28px;
-    left: 6px;
-  }
-
-  .iconButton {
-    right: 0.4rem; 
+  .inputError {
+    left: 50px;
   }
 
   .shineButton {
