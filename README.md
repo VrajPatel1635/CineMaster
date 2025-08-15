@@ -181,6 +181,14 @@ Frontend runs at ➡ `http://localhost:3000`
 
 ---
 
+## 📬 Contact & Feedback  
+
+💌 **Have suggestions, feature ideas, or found a bug? Let’s connect!**  
+📧 Email: [@Vraj](vrajrpatel6261@gmail.com)  
+📱 LinkedIn: [@Vraj](https://www.linkedin.com/in/vraj-patel-1a28762ba/) 
+
+---
+
 ## ❤️ Acknowledgements  
 - [TMDb API](https://www.themoviedb.org/documentation/api) — movie data powerhouse.  
 - [Vercel](https://vercel.com/) — frontend hosting.  
