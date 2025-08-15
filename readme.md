@@ -1,10 +1,3 @@
-Got it ✅  
-I’ll add a **Contact & Feedback section** so people know how to reach you for suggestions, collaborations, or bug reports. I’ll place it neatly near the bottom before the acknowledgements for a professional flow.  
-
-Here’s your **final complete premium README.md** with the new block included:  
-
----
-
 # 🎬 CineMaster  
 
 > **CineMaster** is a modern full‑stack movie discovery platform where users can explore trending films and TV shows, search for their favorites, and view rich details — all from a beautifully responsive interface.  
@@ -12,7 +5,6 @@ Here’s your **final complete premium README.md** with the new block included:
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge&logo=vercel)](https://cine-master-flame.vercel.app/)  
 [![Backend](https://img.shields.io/badge/Backend-Render-blue?style=for-the-badge&logo=render)](https://render.com/)  
-![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)  
 
 ---
 
@@ -24,51 +16,49 @@ Here’s your **final complete premium README.md** with the new block included:
 - [⚙️ Installation & Setup](#️-installation--setup)
 - [📡 API Routes](#-api-routes)
 - [🤝 Contributing](#-contributing)
-- [📬 Contact & Feedback](#-contact--feedback)
-- [📜 License](#-license)
 - [❤️ Acknowledgements](#️-acknowledgements)
 
 ---
 
 ## 📸 Preview  
 
-### **Homepage**  
-![Homepage Preview](./assets/homepage.png)  
+### **Homepage (Hero Section)**  
+![Homepage Preview](./frontend/public/images/homepage.png)  
 
 ---
 
 ### **Search Results**
-![Search Results](./assets/search-results.png)  
+![Search Results](./frontend/public/images/search-results.png)  
 
 ---
 
-### **Movie Details**
-![Movie Details](./assets/movie-details.png)  
+### **Movie Details Page**  
+![Movie Details](./frontend/public/images/movie-details.png)  
 
 ---
 
-### **Watchlist**
-![Watchlist](./assets/watchlist.png)  
+### **Watchlist**  
+![Watchlist](./frontend/public/images/watchlist.png)  
 
 ---
 
 ## ✨ Features  
 
-### **User**
-- 🔥 **Trending Movies & Shows** — Real‑time data from TMDb API.
-- 🔍 **Search Functionality** — Instant, accurate search results.
+### **User Experience**
+- 🔥 **Trending Movies & Shows** — Real‑time from TMDb API.
+- 🔍 **Powerful Search** — Accurate, instant movie & TV results.
 - 🎬 **Detailed Info Pages** — Synopsis, ratings, cast, genres, release date.
-- ❤️ **Personal Watchlist** — Save movies across devices.
+- ❤️ **Personal Watchlist** — Save movies for later viewing.
 - 📱 **Responsive UI** — Optimized for desktop, tablet, and mobile.
-- 🎨 **Smooth Animations** — Using Framer Motion.
+- 🎨 **Smooth Animations** — Motion transitions with Framer Motion.
 
-### **Developer**
-- ⚡ **Next.js App Router** — Server-side rendering and prefetching.
-- 🗃 **MongoDB Atlas** — Cloud-based, scalable database.
-- 🔐 **JWT Auth** — Secure token-based sessions.
-- 🛡 **bcrypt.js** — Safe password hashing.
-- 🌍 **Express.js API** — Modular and clean structure.
-- ⚙ **dotenv** — Environment variable configuration.
+### **Developer / Backend**
+- ⚡ **Next.js App Router** with server-side rendering for fast loads.
+- 🗃 **MongoDB Atlas** — Scalable cloud-hosted database.
+- 🔐 **JWT Authentication** — Secure user login & signup.
+- 🛡 **Password Hashing** — `bcrypt.js` for safe credential storage.
+- 🌐 **REST API** — Express.js backend deployed via Render.
+- ⚙ **Config Management** — `dotenv` for environment variables.
 
 ---
 
@@ -90,18 +80,18 @@ CineMaster/
 │
 ├── backend/
 │   ├── server.js         # Express entry point
-│   ├── routes/           # API endpoints
-│   ├── controllers/      # Route logic
-│   ├── models/           # MongoDB models
-│   ├── middleware/       # JWT Auth middleware
-│   └── utils/            # Helpers
+│   ├── routes/           # API endpoints (auth, movies)
+│   ├── controllers/      # Route business logic
+│   ├── models/           # MongoDB models (User, Watchlist)
+│   ├── middleware/       # Auth/JWT middleware
+│   └── utils/            # Helper functions
 │
 ├── frontend/
-│   ├── app/              # Next.js App Router
-│   ├── components/       # UI components
-│   ├── lib/              # API helpers
-│   ├── styles/           # Tailwind configs
-│   └── public/           # Static files
+│   ├── app/              # Next.js App Router pages
+│   ├── components/       # Shared UI components
+│   ├── lib/              # API call helpers
+│   ├── styles/           # Tailwind & global styles
+│   └── public/           # Static assets
 │
 └── README.md
 ```
@@ -110,18 +100,20 @@ CineMaster/
 
 ## ⚙️ Installation & Setup  
 
-Clone Repo:
+Clone Repository:
 ```bash
 git clone https://github.com/VrajPatel1635/CineMaster.git
 ```
 
-### Backend Setup
+---
+
+### **Backend Setup**
 ```bash
 cd backend
 npm install
 ```
 
-Create `.env` in backend:
+Create `.env` in **backend**:
 ```env
 PORT=5000
 MONGO_URI=your_mongodb_atlas_connection
@@ -133,16 +125,16 @@ Run backend:
 ```bash
 npm run dev
 ```
+Backend runs at ➡ `http://localhost:5000`
 
 ---
 
-### Frontend Setup
+### **Frontend Setup**
 ```bash
 cd frontend
 npm install
 ```
-
-Create `.env.local` in frontend:
+Create `.env.local` in **frontend**:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000
 ```
@@ -151,6 +143,7 @@ Run frontend:
 ```bash
 npm run dev
 ```
+Frontend runs at ➡ `http://localhost:3000`
 
 ---
 
@@ -159,62 +152,45 @@ npm run dev
 **Auth**
 | Method | Endpoint               | Description          |
 |--------|------------------------|----------------------|
-| POST   | `/api/auth/register`   | Sign up new users    |
-| POST   | `/api/auth/login`      | Log in, return JWT   |
+| POST   | `/api/auth/register`   | Create new user      |
+| POST   | `/api/auth/login`      | Login user, issue JWT|
 
 **Movies**
-| Method | Endpoint                      | Description                |
-|--------|--------------------------------|----------------------------|
-| GET    | `/api/movies/trending`         | Get trending titles        |
-| GET    | `/api/movies/search?query=`    | Search by query            |
-| GET    | `/api/movies/:id`              | Get title details          |
+| Method | Endpoint                      | Description                    |
+|--------|--------------------------------|--------------------------------|
+| GET    | `/api/movies/trending`         | Get trending movies & shows   |
+| GET    | `/api/movies/search?query=`    | Search for movies/TV          |
+| GET    | `/api/movies/:id`              | Get detailed movie info       |
 
 **Watchlist**
-| Method | Endpoint              | Description              |
-|--------|-----------------------|--------------------------|
-| GET    | `/api/watchlist`      | View saved movies        |
-| POST   | `/api/watchlist`      | Save a movie to list     |
-| DELETE | `/api/watchlist/:id`  | Remove from watchlist    |
+| Method | Endpoint              | Description         |
+|--------|-----------------------|---------------------|
+| GET    | `/api/watchlist`      | Fetch user’s saved movies |
+| POST   | `/api/watchlist`      | Add movie to watchlist    |
+| DELETE | `/api/watchlist/:id`  | Remove movie from watchlist|
 
 ---
 
 ## 🤝 Contributing  
 
-1. Fork repo  
-2. Create your branch (`git checkout -b feature/AmazingFeature`)  
-3. Commit (`git commit -m 'Add AmazingFeature'`)  
-4. Push (`git push origin feature/AmazingFeature`)  
-5. Open a Pull Request  
+1. Fork repository  
+2. Create feature branch (`git checkout -b feature/amazing-feature`)  
+3. Commit changes (`git commit -m 'Add amazing feature'`)  
+4. Push to branch (`git push origin feature/amazing-feature`)  
+5. Open Pull Request  
 
 ---
 
 ## 📬 Contact & Feedback  
 
 💌 **Have suggestions, feature ideas, or found a bug? Let’s connect!**  
-📧 Email: [vrajrpatel6261@gmail.com]  
-📱 LinkedIn: [Profile](https://www.linkedin.com/in/vraj-patel-1a28762ba/)  
-
----
-
-## 📜 License  
-Licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+📧 Email: [@Vraj](vrajrpatel6261@gmail.com)  
+📱 LinkedIn: [@Vraj](https://www.linkedin.com/in/vraj-patel-1a28762ba/) 
 
 ---
 
 ## ❤️ Acknowledgements  
-- [TMDb API](https://www.themoviedb.org/documentation/api)  
-- [Vercel](https://vercel.com/)  
-- [Render](https://render.com/)  
-- [MongoDB Atlas](https://www.mongodb.com/atlas)  
-
----
-
-Now CineMaster's README has:  
-✅ **Professional structure**  
-✅ **Your real screenshots embedded**  
-✅ **Clear features & stack section**  
-✅ **Contact & feedback call-to-action**  
-
----
-
-Do you want me to **replace `./assets/...` with the actual file names of the screenshots you sent today** so it’s instantly GitHub-ready without broken image links? That way it will display perfectly in your repo.
+- [TMDb API](https://www.themoviedb.org/documentation/api) — movie data powerhouse.  
+- [Vercel](https://vercel.com/) — frontend hosting.  
+- [Render](https://render.com/) — backend hosting.  
+- [MongoDB Atlas](https://www.mongodb.com/atlas) — cloud database.  
