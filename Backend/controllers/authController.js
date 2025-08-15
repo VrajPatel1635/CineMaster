@@ -1,16 +1,3 @@
-// PATCH /api/user/name - update user's name
-export const updateUserName = async (req, res) => {
-  const userId = req.user.id;
-  const { name } = req.body;
-  if (!name || !userId) return res.status(400).json({ message: 'Name and userId required' });
-  try {
-    const user = await User.findByIdAndUpdate(userId, { name }, { new: true });
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json({ user });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
 // Backend/controllers/authController.js
 
 import User from '../models/User.js';
@@ -47,6 +34,20 @@ export const loginUser = async (req, res) => {
     res.status(200).json({ user, token });
   } catch (err) {
     console.error("Error during login:", err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PATCH /api/user/name - update user's name
+export const updateUserName = async (req, res) => {
+  const userId = req.user.id;
+  const { name } = req.body;
+  if (!name || !userId) return res.status(400).json({ message: 'Name and userId required' });
+  try {
+    const user = await User.findByIdAndUpdate(userId, { name }, { new: true });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ user });
+  } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
 };
