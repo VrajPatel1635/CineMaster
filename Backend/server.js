@@ -336,48 +336,6 @@ app.get("/api/search", async (req, res) => {
   }
 });
 
-app.get('/api/search/suggest', async (req, res) => {
-    try {
-        if (!TMDB_API_KEY) return res.status(500).json({ error: 'TMDb API Key missing' });
-        const q = (req.query.q || '').toString().trim();
-        const limit = Math.min(parseInt(req.query.limit || '8', 10), 20);
-
-        // Cache key
-        const key = q ? `suggest:q:${q}:${limit}` : `suggest:trending:${limit}`;
-        const cached = getCache(key);
-        if (cached) return res.json({ suggestions: cached });
-
-        let suggestions = [];
-
-        if (!q) {
-            // Use trending as default suggestions
-            const tRes = await fetch(`https://api.themoviedb.org/3/trending/all/day?api_key=${TMDB_API_KEY}`);
-            const tData = await tRes.json();
-            const names = (tData.results || [])
-                .map(i => i.title || i.name)
-                .filter(Boolean);
-            // Unique, compact list
-            suggestions = [...new Set(names)].slice(0, limit);
-        } else {
-            // Use multi search for typed suggestions
-            const sRes = await fetch(
-                `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(q)}&api_key=${TMDB_API_KEY}`
-            );
-            const sData = await sRes.json();
-            const names = (sData.results || [])
-                .filter(i => i.media_type !== 'person')
-                .map(i => i.title || i.name)
-                .filter(Boolean);
-            suggestions = [...new Set(names)].slice(0, limit);
-        }
-
-        setCache(key, suggestions, 60_000);
-        res.json({ suggestions });
-    } catch (err) {
-        console.error('Suggest error:', err);
-        res.status(500).json({ error: 'Failed to build suggestions' });
-    }
-});
 // New Releases endpoint: discover movies sorted by release date
 app.get('/api/discover/movie', async (req, res) => {
     try {
